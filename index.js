@@ -60,41 +60,132 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ['account_id', 'container_id', 'name'],
       },
     },
+    // Tags
     {
       name: 'gtm_list_tags',
-      description: 'Elenca i tag in un workspace GTM. Se workspace_id non è specificato usa il Default Workspace.',
+      description: 'Elenca i tag in un workspace GTM.',
       inputSchema: {
         type: 'object',
         properties: {
           account_id: { type: 'string' },
           container_id: { type: 'string' },
-          workspace_id: { type: 'string', description: 'Opzionale — se omesso usa il Default Workspace' },
+          workspace_id: { type: 'string', description: 'Opzionale' },
         },
         required: ['account_id', 'container_id'],
       },
     },
+    {
+      name: 'gtm_create_tag',
+      description: 'Crea un nuovo tag in un workspace GTM.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          account_id: { type: 'string' },
+          container_id: { type: 'string' },
+          workspace_id: { type: 'string', description: 'Opzionale' },
+          tag: { type: 'object', description: 'Oggetto tag GTM (name, type, parameter, firingTriggerId, ecc.)' },
+        },
+        required: ['account_id', 'container_id', 'tag'],
+      },
+    },
+    {
+      name: 'gtm_update_tag',
+      description: 'Modifica un tag esistente in un workspace GTM.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          account_id: { type: 'string' },
+          container_id: { type: 'string' },
+          workspace_id: { type: 'string', description: 'Opzionale' },
+          tag_id: { type: 'string', description: 'ID del tag da modificare' },
+          tag: { type: 'object', description: 'Oggetto tag aggiornato' },
+        },
+        required: ['account_id', 'container_id', 'tag_id', 'tag'],
+      },
+    },
+    {
+      name: 'gtm_delete_tag',
+      description: 'Elimina un tag da un workspace GTM.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          account_id: { type: 'string' },
+          container_id: { type: 'string' },
+          workspace_id: { type: 'string', description: 'Opzionale' },
+          tag_id: { type: 'string', description: 'ID del tag da eliminare' },
+        },
+        required: ['account_id', 'container_id', 'tag_id'],
+      },
+    },
+
+    // Triggers
     {
       name: 'gtm_list_triggers',
-      description: 'Elenca i trigger in un workspace GTM. Se workspace_id non è specificato usa il Default Workspace.',
+      description: 'Elenca i trigger in un workspace GTM.',
       inputSchema: {
         type: 'object',
         properties: {
           account_id: { type: 'string' },
           container_id: { type: 'string' },
-          workspace_id: { type: 'string', description: 'Opzionale — se omesso usa il Default Workspace' },
+          workspace_id: { type: 'string', description: 'Opzionale' },
         },
         required: ['account_id', 'container_id'],
       },
     },
     {
-      name: 'gtm_list_variables',
-      description: 'Elenca le variabili in un workspace GTM. Se workspace_id non è specificato usa il Default Workspace.',
+      name: 'gtm_create_trigger',
+      description: 'Crea un nuovo trigger in un workspace GTM.',
       inputSchema: {
         type: 'object',
         properties: {
           account_id: { type: 'string' },
           container_id: { type: 'string' },
-          workspace_id: { type: 'string', description: 'Opzionale — se omesso usa il Default Workspace' },
+          workspace_id: { type: 'string', description: 'Opzionale' },
+          trigger: { type: 'object', description: 'Oggetto trigger GTM (name, type, filter, ecc.)' },
+        },
+        required: ['account_id', 'container_id', 'trigger'],
+      },
+    },
+    {
+      name: 'gtm_update_trigger',
+      description: 'Modifica un trigger esistente in un workspace GTM.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          account_id: { type: 'string' },
+          container_id: { type: 'string' },
+          workspace_id: { type: 'string', description: 'Opzionale' },
+          trigger_id: { type: 'string', description: 'ID del trigger da modificare' },
+          trigger: { type: 'object', description: 'Oggetto trigger aggiornato' },
+        },
+        required: ['account_id', 'container_id', 'trigger_id', 'trigger'],
+      },
+    },
+    {
+      name: 'gtm_delete_trigger',
+      description: 'Elimina un trigger da un workspace GTM.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          account_id: { type: 'string' },
+          container_id: { type: 'string' },
+          workspace_id: { type: 'string', description: 'Opzionale' },
+          trigger_id: { type: 'string', description: 'ID del trigger da eliminare' },
+        },
+        required: ['account_id', 'container_id', 'trigger_id'],
+      },
+    },
+
+    // Variables
+    {
+      name: 'gtm_list_variables',
+      description: 'Elenca le variabili in un workspace GTM.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          account_id: { type: 'string' },
+          container_id: { type: 'string' },
+          workspace_id: { type: 'string', description: 'Opzionale' },
         },
         required: ['account_id', 'container_id'],
       },
@@ -107,13 +198,39 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           account_id: { type: 'string' },
           container_id: { type: 'string' },
-          workspace_id: { type: 'string', description: 'Opzionale — se omesso usa il Default Workspace' },
-          variable: {
-            type: 'object',
-            description: 'Oggetto variabile GTM (name, type, parameter, ecc.)',
-          },
+          workspace_id: { type: 'string', description: 'Opzionale' },
+          variable: { type: 'object', description: 'Oggetto variabile GTM (name, type, parameter, ecc.)' },
         },
         required: ['account_id', 'container_id', 'variable'],
+      },
+    },
+    {
+      name: 'gtm_update_variable',
+      description: 'Modifica una variabile esistente in un workspace GTM.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          account_id: { type: 'string' },
+          container_id: { type: 'string' },
+          workspace_id: { type: 'string', description: 'Opzionale' },
+          variable_id: { type: 'string', description: 'ID della variabile da modificare' },
+          variable: { type: 'object', description: 'Oggetto variabile aggiornato' },
+        },
+        required: ['account_id', 'container_id', 'variable_id', 'variable'],
+      },
+    },
+    {
+      name: 'gtm_delete_variable',
+      description: 'Elimina una variabile da un workspace GTM.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          account_id: { type: 'string' },
+          container_id: { type: 'string' },
+          workspace_id: { type: 'string', description: 'Opzionale' },
+          variable_id: { type: 'string', description: 'ID della variabile da eliminare' },
+        },
+        required: ['account_id', 'container_id', 'variable_id'],
       },
     },
     {
@@ -247,14 +364,38 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'gtm_list_tags':
         result = await gtm.listTags(auth, args.account_id, args.container_id, args.workspace_id);
         break;
+      case 'gtm_create_tag':
+        result = await gtm.createTag(auth, args.account_id, args.container_id, args.workspace_id, args.tag);
+        break;
+      case 'gtm_update_tag':
+        result = await gtm.updateTag(auth, args.account_id, args.container_id, args.workspace_id, args.tag_id, args.tag);
+        break;
+      case 'gtm_delete_tag':
+        result = await gtm.deleteTag(auth, args.account_id, args.container_id, args.workspace_id, args.tag_id);
+        break;
       case 'gtm_list_triggers':
         result = await gtm.listTriggers(auth, args.account_id, args.container_id, args.workspace_id);
+        break;
+      case 'gtm_create_trigger':
+        result = await gtm.createTrigger(auth, args.account_id, args.container_id, args.workspace_id, args.trigger);
+        break;
+      case 'gtm_update_trigger':
+        result = await gtm.updateTrigger(auth, args.account_id, args.container_id, args.workspace_id, args.trigger_id, args.trigger);
+        break;
+      case 'gtm_delete_trigger':
+        result = await gtm.deleteTrigger(auth, args.account_id, args.container_id, args.workspace_id, args.trigger_id);
         break;
       case 'gtm_list_variables':
         result = await gtm.listVariables(auth, args.account_id, args.container_id, args.workspace_id);
         break;
       case 'gtm_create_variable':
         result = await gtm.createVariable(auth, args.account_id, args.container_id, args.workspace_id, args.variable);
+        break;
+      case 'gtm_update_variable':
+        result = await gtm.updateVariable(auth, args.account_id, args.container_id, args.workspace_id, args.variable_id, args.variable);
+        break;
+      case 'gtm_delete_variable':
+        result = await gtm.deleteVariable(auth, args.account_id, args.container_id, args.workspace_id, args.variable_id);
         break;
       case 'gtm_publish_container':
         result = await gtm.publishContainer(auth, args.account_id, args.container_id, args.workspace_id);

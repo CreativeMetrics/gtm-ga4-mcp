@@ -30,10 +30,20 @@ async function resolveWorkspaceId(auth, accountId, containerId, workspaceId) {
   if (workspaceId) return workspaceId;
   const workspaces = await listWorkspaces(auth, accountId, containerId);
   if (!workspaces.length) throw new Error('Nessun workspace trovato nel container.');
-  // Preferisce il workspace "Default Workspace" se esiste, altrimenti il primo
   const defaultWs = workspaces.find(w => w.name === 'Default Workspace') || workspaces[0];
   return defaultWs.workspaceId;
 }
+
+async function createWorkspace(auth, accountId, containerId, name, description) {
+  const gtm = getTagManager(auth);
+  const res = await gtm.accounts.containers.workspaces.create({
+    parent: `accounts/${accountId}/containers/${containerId}`,
+    requestBody: { name, description: description || '' },
+  });
+  return res.data;
+}
+
+// ── TAGS ──────────────────────────────────────────────────────────────────────
 
 async function listTags(auth, accountId, containerId, workspaceId) {
   const gtm = getTagManager(auth);
@@ -44,6 +54,37 @@ async function listTags(auth, accountId, containerId, workspaceId) {
   return res.data.tag || [];
 }
 
+async function createTag(auth, accountId, containerId, workspaceId, tagBody) {
+  const gtm = getTagManager(auth);
+  const wsId = await resolveWorkspaceId(auth, accountId, containerId, workspaceId);
+  const res = await gtm.accounts.containers.workspaces.tags.create({
+    parent: `accounts/${accountId}/containers/${containerId}/workspaces/${wsId}`,
+    requestBody: tagBody,
+  });
+  return res.data;
+}
+
+async function updateTag(auth, accountId, containerId, workspaceId, tagId, tagBody) {
+  const gtm = getTagManager(auth);
+  const wsId = await resolveWorkspaceId(auth, accountId, containerId, workspaceId);
+  const res = await gtm.accounts.containers.workspaces.tags.update({
+    path: `accounts/${accountId}/containers/${containerId}/workspaces/${wsId}/tags/${tagId}`,
+    requestBody: tagBody,
+  });
+  return res.data;
+}
+
+async function deleteTag(auth, accountId, containerId, workspaceId, tagId) {
+  const gtm = getTagManager(auth);
+  const wsId = await resolveWorkspaceId(auth, accountId, containerId, workspaceId);
+  await gtm.accounts.containers.workspaces.tags.delete({
+    path: `accounts/${accountId}/containers/${containerId}/workspaces/${wsId}/tags/${tagId}`,
+  });
+  return { deleted: true, tagId };
+}
+
+// ── TRIGGERS ──────────────────────────────────────────────────────────────────
+
 async function listTriggers(auth, accountId, containerId, workspaceId) {
   const gtm = getTagManager(auth);
   const wsId = await resolveWorkspaceId(auth, accountId, containerId, workspaceId);
@@ -52,6 +93,37 @@ async function listTriggers(auth, accountId, containerId, workspaceId) {
   });
   return res.data.trigger || [];
 }
+
+async function createTrigger(auth, accountId, containerId, workspaceId, triggerBody) {
+  const gtm = getTagManager(auth);
+  const wsId = await resolveWorkspaceId(auth, accountId, containerId, workspaceId);
+  const res = await gtm.accounts.containers.workspaces.triggers.create({
+    parent: `accounts/${accountId}/containers/${containerId}/workspaces/${wsId}`,
+    requestBody: triggerBody,
+  });
+  return res.data;
+}
+
+async function updateTrigger(auth, accountId, containerId, workspaceId, triggerId, triggerBody) {
+  const gtm = getTagManager(auth);
+  const wsId = await resolveWorkspaceId(auth, accountId, containerId, workspaceId);
+  const res = await gtm.accounts.containers.workspaces.triggers.update({
+    path: `accounts/${accountId}/containers/${containerId}/workspaces/${wsId}/triggers/${triggerId}`,
+    requestBody: triggerBody,
+  });
+  return res.data;
+}
+
+async function deleteTrigger(auth, accountId, containerId, workspaceId, triggerId) {
+  const gtm = getTagManager(auth);
+  const wsId = await resolveWorkspaceId(auth, accountId, containerId, workspaceId);
+  await gtm.accounts.containers.workspaces.triggers.delete({
+    path: `accounts/${accountId}/containers/${containerId}/workspaces/${wsId}/triggers/${triggerId}`,
+  });
+  return { deleted: true, triggerId };
+}
+
+// ── VARIABLES ─────────────────────────────────────────────────────────────────
 
 async function listVariables(auth, accountId, containerId, workspaceId) {
   const gtm = getTagManager(auth);
@@ -72,14 +144,26 @@ async function createVariable(auth, accountId, containerId, workspaceId, variabl
   return res.data;
 }
 
-async function createWorkspace(auth, accountId, containerId, name, description) {
+async function updateVariable(auth, accountId, containerId, workspaceId, variableId, variableBody) {
   const gtm = getTagManager(auth);
-  const res = await gtm.accounts.containers.workspaces.create({
-    parent: `accounts/${accountId}/containers/${containerId}`,
-    requestBody: { name, description: description || '' },
+  const wsId = await resolveWorkspaceId(auth, accountId, containerId, workspaceId);
+  const res = await gtm.accounts.containers.workspaces.variables.update({
+    path: `accounts/${accountId}/containers/${containerId}/workspaces/${wsId}/variables/${variableId}`,
+    requestBody: variableBody,
   });
   return res.data;
 }
+
+async function deleteVariable(auth, accountId, containerId, workspaceId, variableId) {
+  const gtm = getTagManager(auth);
+  const wsId = await resolveWorkspaceId(auth, accountId, containerId, workspaceId);
+  await gtm.accounts.containers.workspaces.variables.delete({
+    path: `accounts/${accountId}/containers/${containerId}/workspaces/${wsId}/variables/${variableId}`,
+  });
+  return { deleted: true, variableId };
+}
+
+// ── PUBLISH ───────────────────────────────────────────────────────────────────
 
 async function publishContainer(auth, accountId, containerId, workspaceId) {
   const gtm = getTagManager(auth);
@@ -101,8 +185,16 @@ module.exports = {
   listWorkspaces,
   createWorkspace,
   listTags,
+  createTag,
+  updateTag,
+  deleteTag,
   listTriggers,
+  createTrigger,
+  updateTrigger,
+  deleteTrigger,
   listVariables,
   createVariable,
+  updateVariable,
+  deleteVariable,
   publishContainer,
 };
