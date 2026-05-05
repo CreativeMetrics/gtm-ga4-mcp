@@ -47,6 +47,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'gtm_create_workspace',
+      description: 'Crea un nuovo workspace GTM. Utile dopo una pubblicazione per iniziare un nuovo set di modifiche.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          account_id: { type: 'string' },
+          container_id: { type: 'string' },
+          name: { type: 'string', description: 'Nome del workspace (es. "Modifiche maggio 2025")' },
+          description: { type: 'string', description: 'Descrizione opzionale' },
+        },
+        required: ['account_id', 'container_id', 'name'],
+      },
+    },
+    {
       name: 'gtm_list_tags',
       description: 'Elenca i tag in un workspace GTM. Se workspace_id non è specificato usa il Default Workspace.',
       inputSchema: {
@@ -226,6 +240,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case 'gtm_list_containers':
         result = await gtm.listContainers(auth, args.account_id);
+        break;
+      case 'gtm_create_workspace':
+        result = await gtm.createWorkspace(auth, args.account_id, args.container_id, args.name, args.description);
         break;
       case 'gtm_list_tags':
         result = await gtm.listTags(auth, args.account_id, args.container_id, args.workspace_id);

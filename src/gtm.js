@@ -72,6 +72,15 @@ async function createVariable(auth, accountId, containerId, workspaceId, variabl
   return res.data;
 }
 
+async function createWorkspace(auth, accountId, containerId, name, description) {
+  const gtm = getTagManager(auth);
+  const res = await gtm.accounts.containers.workspaces.create({
+    parent: `accounts/${accountId}/containers/${containerId}`,
+    requestBody: { name, description: description || '' },
+  });
+  return res.data;
+}
+
 async function publishContainer(auth, accountId, containerId, workspaceId) {
   const gtm = getTagManager(auth);
   const wsId = await resolveWorkspaceId(auth, accountId, containerId, workspaceId);
@@ -90,6 +99,7 @@ module.exports = {
   listAccounts,
   listContainers,
   listWorkspaces,
+  createWorkspace,
   listTags,
   listTriggers,
   listVariables,
