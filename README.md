@@ -99,7 +99,7 @@ Riavvia Claude Desktop dopo aver salvato il file.
 Al primo utilizzo, chiedi a Claude:
 1. *"Genera il link di autenticazione GTM/GA4"* → apri il link nel browser
 2. Accedi con il tuo account Google e autorizza l'app
-3. Copia il codice che ti viene mostrato
+3. Google mostrerà un codice **direttamente a schermo** — copialo
 4. *"Completa il login con il codice: XXXXX"*
 
 Il token viene salvato in `~/.gtm-ga4-mcp/token.json` e riutilizzato automaticamente nelle sessioni successive.

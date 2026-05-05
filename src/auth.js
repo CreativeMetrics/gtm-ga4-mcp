@@ -21,9 +21,9 @@ function getAuthClient() {
   }
 
   const credentials = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
-  const { client_secret, client_id, redirect_uris } = credentials.installed || credentials.web;
+  const { client_secret, client_id } = credentials.installed || credentials.web;
 
-  const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+  const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, 'urn:ietf:wg:oauth:2.0:oob');
 
   if (fs.existsSync(TOKEN_PATH)) {
     const token = JSON.parse(fs.readFileSync(TOKEN_PATH, 'utf8'));
@@ -37,11 +37,12 @@ function getAuthUrl(oAuth2Client) {
   return oAuth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,
+    redirect_uri: 'urn:ietf:wg:oauth:2.0:oob',
   });
 }
 
 async function exchangeCode(oAuth2Client, code) {
-  const { tokens } = await oAuth2Client.getToken(code);
+  const { tokens } = await oAuth2Client.getToken({ code, redirect_uri: 'urn:ietf:wg:oauth:2.0:oob' });
   oAuth2Client.setCredentials(tokens);
 
   const dir = path.dirname(TOKEN_PATH);
