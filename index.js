@@ -7,6 +7,7 @@ const { CallToolRequestSchema, ListToolsRequestSchema } = require('@modelcontext
 const { getAuthClient, getAuthUrl, exchangeCode } = require('./src/auth.js');
 const gtm = require('./src/gtm.js');
 const ga4 = require('./src/ga4.js');
+const { duplicateContainer } = require('./src/gtm-duplicate.js');
 
 const server = new Server(
   { name: 'gtm-ga4-mcp', version: '1.0.0' },
@@ -234,6 +235,22 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'gtm_duplicate_container',
+      description: 'Duplica un intero container GTM (tag, trigger, variabili, cartelle, template) in un altro container. Gestisce rate limiting, backoff automatico sui 429, remapping ID e installazione template.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          src_account_id: { type: 'string', description: 'Account ID del container sorgente' },
+          src_container_id: { type: 'string', description: 'Container ID sorgente' },
+          dst_account_id: { type: 'string', description: 'Account ID del container destinazione' },
+          dst_container_id: { type: 'string', description: 'Container ID destinazione' },
+          prefix: { type: 'string', description: 'Prefisso opzionale da aggiungere ai nomi (es. "[COPIA] ")' },
+          suffix: { type: 'string', description: 'Suffisso opzionale da aggiungere ai nomi' },
+        },
+        required: ['src_account_id', 'src_container_id', 'dst_account_id', 'dst_container_id'],
+      },
+    },
+    {
       name: 'gtm_publish_container',
       description: 'Pubblica il workspace GTM corrente creando una nuova versione.',
       inputSchema: {
@@ -396,6 +413,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case 'gtm_delete_variable':
         result = await gtm.deleteVariable(auth, args.account_id, args.container_id, args.workspace_id, args.variable_id);
+        break;
+      case 'gtm_duplicate_container':
+        result = await duplicateContainer(
+          auth,
+          args.src_account_id, args.src_container_id,
+          args.dst_account_id, args.dst_container_id,
+          { prefix: args.prefix, suffix: args.suffix }
+        );
         break;
       case 'gtm_publish_container':
         result = await gtm.publishContainer(auth, args.account_id, args.container_id, args.workspace_id);
