@@ -32,33 +32,52 @@ MCP (Model Context Protocol) server per gestire Google Tag Manager e Google Anal
 | `ga4_run_report` | Esegue un report personalizzato |
 | `ga4_list_conversion_events` | Elenca gli eventi di conversione |
 
+## Le API sono a pagamento?
+
+No. Tag Manager API, Google Analytics Admin API e Analytics Data API sono **completamente gratuite**. Google richiede un progetto Cloud con carta di credito associata, ma non addebita nulla per queste API.
+
 ## Setup
 
-### 1. Credenziali Google Cloud
+### 1. Crea il progetto Google Cloud
 
-1. Vai su [Google Cloud Console](https://console.cloud.google.com/)
-2. Crea un nuovo progetto (o usa uno esistente)
-3. Abilita le API:
-   - **Tag Manager API**
-   - **Google Analytics Admin API**
-   - **Google Analytics Data API**
-4. Vai su **API & Services → Credentials**
-5. Crea **OAuth 2.0 Client ID** → tipo **Desktop app**
-6. Scarica il file JSON e salvalo in:
+1. Vai su [console.cloud.google.com](https://console.cloud.google.com)
+2. **New Project** → dai un nome (es. `gtm-ga4-mcp`)
+
+### 2. Abilita le 3 API
+
+Da **APIs & Services → Library**, cerca e abilita:
+- `Tag Manager API`
+- `Google Analytics Admin API`
+- `Google Analytics Data API`
+
+### 3. Configura la OAuth consent screen
+
+1. Vai su **APIs & Services → OAuth consent screen**
+2. User type: **External**
+3. Compila nome app ed email
+4. Nella sezione **Test users** aggiungi la tua email Google
+
+> Finché l'app è in modalità "Testing" puoi usarla liberamente senza pubblicarla.
+
+### 4. Crea le credenziali OAuth
+
+1. **APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID**
+2. Application type: **Desktop app**
+3. Scarica il JSON e salvalo in:
 
 ```
 ~/.gtm-ga4-mcp/credentials.json
 ```
 
-### 2. Installazione
+### 5. Installazione
 
 ```bash
-git clone https://github.com/TUO_USERNAME/gtm-ga4-mcp.git
+git clone https://github.com/CreativeMetrics/gtm-ga4-mcp.git
 cd gtm-ga4-mcp
 npm install
 ```
 
-### 3. Configurazione Claude Desktop
+### 6. Configurazione Claude Desktop
 
 Aggiungi in `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
@@ -73,14 +92,17 @@ Aggiungi in `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-### 4. Primo accesso
+Riavvia Claude Desktop dopo aver salvato il file.
+
+### 7. Primo accesso
 
 Al primo utilizzo, chiedi a Claude:
 1. *"Genera il link di autenticazione GTM/GA4"* → apri il link nel browser
-2. Dopo l'autorizzazione, Google ti darà un codice
-3. *"Completa il login con il codice: XXXXX"*
+2. Accedi con il tuo account Google e autorizza l'app
+3. Copia il codice che ti viene mostrato
+4. *"Completa il login con il codice: XXXXX"*
 
-Il token viene salvato in `~/.gtm-ga4-mcp/token.json` e riutilizzato automaticamente.
+Il token viene salvato in `~/.gtm-ga4-mcp/token.json` e riutilizzato automaticamente nelle sessioni successive.
 
 ## Esempi d'uso
 
