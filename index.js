@@ -48,41 +48,41 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     },
     {
       name: 'gtm_list_tags',
-      description: 'Elenca i tag in un workspace GTM.',
+      description: 'Elenca i tag in un workspace GTM. Se workspace_id non è specificato usa il Default Workspace.',
       inputSchema: {
         type: 'object',
         properties: {
           account_id: { type: 'string' },
           container_id: { type: 'string' },
-          workspace_id: { type: 'string' },
+          workspace_id: { type: 'string', description: 'Opzionale — se omesso usa il Default Workspace' },
         },
-        required: ['account_id', 'container_id', 'workspace_id'],
+        required: ['account_id', 'container_id'],
       },
     },
     {
       name: 'gtm_list_triggers',
-      description: 'Elenca i trigger in un workspace GTM.',
+      description: 'Elenca i trigger in un workspace GTM. Se workspace_id non è specificato usa il Default Workspace.',
       inputSchema: {
         type: 'object',
         properties: {
           account_id: { type: 'string' },
           container_id: { type: 'string' },
-          workspace_id: { type: 'string' },
+          workspace_id: { type: 'string', description: 'Opzionale — se omesso usa il Default Workspace' },
         },
-        required: ['account_id', 'container_id', 'workspace_id'],
+        required: ['account_id', 'container_id'],
       },
     },
     {
       name: 'gtm_list_variables',
-      description: 'Elenca le variabili in un workspace GTM.',
+      description: 'Elenca le variabili in un workspace GTM. Se workspace_id non è specificato usa il Default Workspace.',
       inputSchema: {
         type: 'object',
         properties: {
           account_id: { type: 'string' },
           container_id: { type: 'string' },
-          workspace_id: { type: 'string' },
+          workspace_id: { type: 'string', description: 'Opzionale — se omesso usa il Default Workspace' },
         },
-        required: ['account_id', 'container_id', 'workspace_id'],
+        required: ['account_id', 'container_id'],
       },
     },
     {
@@ -93,13 +93,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           account_id: { type: 'string' },
           container_id: { type: 'string' },
-          workspace_id: { type: 'string' },
+          workspace_id: { type: 'string', description: 'Opzionale — se omesso usa il Default Workspace' },
           variable: {
             type: 'object',
             description: 'Oggetto variabile GTM (name, type, parameter, ecc.)',
           },
         },
-        required: ['account_id', 'container_id', 'workspace_id', 'variable'],
+        required: ['account_id', 'container_id', 'variable'],
       },
     },
     {
@@ -110,9 +110,9 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           account_id: { type: 'string' },
           container_id: { type: 'string' },
-          workspace_id: { type: 'string' },
+          workspace_id: { type: 'string', description: 'Opzionale — se omesso usa il Default Workspace' },
         },
-        required: ['account_id', 'container_id', 'workspace_id'],
+        required: ['account_id', 'container_id'],
       },
     },
 
