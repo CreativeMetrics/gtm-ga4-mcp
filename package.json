@@ -1,0 +1,20 @@
+{
+  "name": "gtm-ga4-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for Google Tag Manager and GA4 management",
+  "main": "index.js",
+  "bin": {
+    "gtm-ga4-mcp": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": ["mcp", "google-tag-manager", "ga4", "analytics"],
+  "author": "Federico",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "googleapis": "^171.4.0"
+  }
+}
