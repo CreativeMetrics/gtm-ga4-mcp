@@ -9,7 +9,6 @@ function getTagManager(auth) {
   return google.tagmanager({ version: 'v2', auth });
 }
 
-// Strip read-only fields before POSTing to destination
 function cleanEntity(obj) {
   const STRIP = new Set([
     'accountId', 'containerId', 'workspaceId', 'tagId', 'variableId',
@@ -17,10 +16,6 @@ function cleanEntity(obj) {
     'parentFolderId', 'monitoringMetadata', 'monitoringMetadataTagNameKey',
   ]);
   return Object.fromEntries(Object.entries(obj).filter(([k]) => !STRIP.has(k)));
-}
-
-function isCustomTemplate(type) {
-  return !!type && type.startsWith('cvt_');
 }
 
 function templateIdFromType(type) {
@@ -35,7 +30,6 @@ function isGalleryTemplateId(tid) {
   return typeof tid === 'string' && /^cvt_[A-Za-z0-9]+$/.test(tid);
 }
 
-// Wrapper that adds delay + exponential backoff on 429
 async function apiWrite(fn, attempt = 0) {
   try {
     const res = await fn();
@@ -68,18 +62,70 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
 
   const srcBase = `accounts/${srcAccountId}/containers/${srcContainerId}`;
   const dstBase = `accounts/${dstAccountId}/containers/${dstContainerId}`;
+  const srcContId = srcContainerId;
+  const dstContId = dstContainerId;
 
   const prefix = options.prefix || '';
   const suffix = options.suffix || '';
   const rename = name => `${prefix}${name}${suffix}`;
 
-  // ── 1. Recupera workspace sorgente (default) ─────────────────────────────
+  // ════════════════════════════════════════════════════════════
+  // FASE 1 — LETTURA SORGENTE + RILEVAMENTO TEMPLATE
+  // ════════════════════════════════════════════════════════════
+
+  // 1a. Workspace sorgente
   const srcWorkspaces = await getAll(auth, `${srcBase}/workspaces`, 'workspace');
   const srcWs = srcWorkspaces.find(w => w.name === 'Default Workspace') || srcWorkspaces[0];
   if (!srcWs) throw new Error('Nessun workspace trovato nel container sorgente.');
   const srcWsBase = `${srcBase}/workspaces/${srcWs.workspaceId}`;
 
-  // ── 2. Crea workspace destinazione ───────────────────────────────────────
+  // 1b. Leggi tutto in parallelo
+  const [srcFolders, srcTemplateList, srcVars, srcTrigs, srcTags, builtInRes] = await Promise.all([
+    getAll(auth, `${srcWsBase}/folders`, 'folder'),
+    getAll(auth, `${srcWsBase}/templates`, 'template'),
+    getAll(auth, `${srcWsBase}/variables`, 'variable'),
+    getAll(auth, `${srcWsBase}/triggers`, 'trigger'),
+    getAll(auth, `${srcWsBase}/tags`, 'tag'),
+    gtm.accounts.containers.workspaces.built_in_variables.list({ parent: srcWsBase })
+      .then(r => { sleep(READ_DELAY_MS); return r; })
+      .catch(() => ({ data: {} })),
+  ]);
+  const srcBuiltIns = builtInRes.data.builtInVariable || [];
+
+  // 1c. Rileva quali template sono necessari
+  const neededUserTmplIds = new Set();
+  const neededGalleryTypes = new Set();
+  [...srcTags, ...srcVars].forEach(e => {
+    const tid = templateIdFromType(e.type);
+    if (!tid) return;
+    if (isGalleryTemplateId(tid)) neededGalleryTypes.add(tid);
+    else neededUserTmplIds.add(tid);
+  });
+
+  // 1d. Fetch templateData completo per ogni template (la list API non la include)
+  const srcTemplatesFull = {};
+  for (const t of srcTemplateList) {
+    try {
+      const r = await auth.request({
+        url: `https://www.googleapis.com/tagmanager/v2/${srcWsBase}/templates/${t.templateId}`,
+        method: 'GET',
+      });
+      await sleep(READ_DELAY_MS);
+      srcTemplatesFull[t.templateId] = r.data;
+    } catch (_) {
+      srcTemplatesFull[t.templateId] = t;
+    }
+  }
+
+  const srcGalleryTemplates = Object.values(srcTemplatesFull).filter(t => t.galleryReference);
+
+  log.push(`Rilevati: ${srcFolders.length} cartelle · ${srcBuiltIns.length} built-in · ${neededUserTmplIds.size} template utente · ${neededGalleryTypes.size} template gallery · ${srcVars.length} variabili · ${srcTrigs.length} trigger · ${srcTags.length} tag`);
+
+  // ════════════════════════════════════════════════════════════
+  // FASE 2 — SCRITTURA (ordine: workspace → template → cartelle → built-in → variabili → trigger → tag)
+  // ════════════════════════════════════════════════════════════
+
+  // 2a. Crea workspace destinazione
   log.push('Creazione workspace destinazione…');
   const dstWsRes = await apiWrite(() =>
     gtm.accounts.containers.workspaces.create({
@@ -91,145 +137,69 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
   const dstWsBase = `${dstBase}/workspaces/${dstWs.workspaceId}`;
   log.push(`Workspace "${dstWs.name}" creato (ID: ${dstWs.workspaceId})`);
 
-  // ── 3. Leggi tutto dal sorgente in parallelo ─────────────────────────────
-  const [srcFolders, srcTemplatesFull, srcVars, srcTrigs, srcTags] = await Promise.all([
-    getAll(auth, `${srcWsBase}/folders`, 'folder'),
-    getAll(auth, `${srcWsBase}/templates`, 'template'),
-    getAll(auth, `${srcWsBase}/variables`, 'variable'),
-    getAll(auth, `${srcWsBase}/triggers`, 'trigger'),
-    getAll(auth, `${srcWsBase}/tags`, 'tag'),
-  ]);
+  // 2b. Installa template utente PRIMA di tutto il resto
+  const typeMap = {};
+  let tmplUserOk = 0;
+  let tmplGalleryOk = 0;
 
-  // ── 4. Copia cartelle ────────────────────────────────────────────────────
-  const folderMap = {}; // srcFolderId → dstFolderId
-  log.push(`Cartelle: ${srcFolders.length}`);
-  for (const f of srcFolders) {
-    try {
-      const body = { name: rename(f.name) };
-      const res = await apiWrite(() =>
-        gtm.accounts.containers.workspaces.folders.create({
-          parent: dstWsBase,
-          requestBody: body,
-        })
-      );
-      folderMap[f.folderId] = res.data.folderId;
-      log.push(`  ✓ Cartella "${f.name}"`);
-    } catch (e) {
-      warn.push(`  ✗ Cartella "${f.name}": ${e.message}`);
-    }
-  }
+  if (neededUserTmplIds.size > 0) {
+    log.push(`Template utente (${neededUserTmplIds.size})…`);
+    for (const srcTid of neededUserTmplIds) {
+      const t = srcTemplatesFull[srcTid];
+      const srcType = `cvt_${srcContId}_${srcTid}`;
+      const name = t?.name || `Template ${srcTid}`;
+      let dstTid = null;
 
-  // ── 5. Abilita built-in variables ────────────────────────────────────────
-  try {
-    const builtInRes = await gtm.accounts.containers.workspaces.built_in_variables.list({
-      parent: srcWsBase,
-    });
-    await sleep(READ_DELAY_MS);
-    const builtIns = builtInRes.data.builtInVariable || [];
-    if (builtIns.length) {
-      const types = builtIns.map(b => b.type);
-      await apiWrite(() =>
-        gtm.accounts.containers.workspaces.built_in_variables.create({
-          parent: dstWsBase,
-          type: types,
-        })
-      );
-      log.push(`Built-in variables abilitate: ${types.length}`);
-    }
-  } catch (e) {
-    warn.push(`Built-in variables: ${e.message}`);
-  }
-
-  // ── 6. Installa template ─────────────────────────────────────────────────
-  const typeMap = {}; // srcType → dstType (solo per template utente)
-  const srcContId = srcContainerId;
-  const dstContId = dstContainerId;
-
-  // Identifica template usati da tag e variabili
-  const neededUserTmplIds = new Set();  // numeric ids per template utente
-  const neededGalleryTypes = new Set(); // cvt_XXXXX per gallery
-  [...srcTags, ...srcVars].forEach(e => {
-    const tid = templateIdFromType(e.type);
-    if (!tid) return;
-    if (isGalleryTemplateId(tid)) neededGalleryTypes.add(tid);
-    else neededUserTmplIds.add(tid);
-  });
-
-  // Fetch templateData individuale per ogni template (la list API non la restituisce)
-  const srcTemplatesByNumericId = {};
-  for (const t of srcTemplatesFull) {
-    try {
-      const r = await auth.request({
-        url: `https://www.googleapis.com/tagmanager/v2/${srcWsBase}/templates/${t.templateId}`,
-        method: 'GET',
-      });
-      await sleep(READ_DELAY_MS);
-      srcTemplatesByNumericId[t.templateId] = r.data;
-    } catch (_) {
-      srcTemplatesByNumericId[t.templateId] = t;
-    }
-  }
-
-  const srcGalleryTemplates = Object.values(srcTemplatesByNumericId).filter(t => t.galleryReference);
-  const srcUserTemplates    = Object.values(srcTemplatesByNumericId).filter(t => !t.galleryReference);
-
-  log.push(`Template: ${neededUserTmplIds.size} utente · ${neededGalleryTypes.size} gallery`);
-
-  // ── Template utente (cvt_<containerId>_<numericId>) ──────────────────────
-  for (const srcTid of neededUserTmplIds) {
-    const t = srcTemplatesByNumericId[srcTid];
-    const srcType = `cvt_${srcContId}_${srcTid}`;
-    const name = t?.name || `Template ${srcTid}`;
-    let dstTid = null;
-
-    if (t?.templateData) {
-      try {
-        const body = { name: t.name, templateData: t.templateData };
-        if (t.galleryReference) body.galleryReference = t.galleryReference;
-        const resp = await apiWrite(() =>
-          gtm.accounts.containers.workspaces.templates.create({
-            parent: dstWsBase,
-            requestBody: body,
-          })
-        );
-        dstTid = resp.data.templateId;
-        log.push(`  ✓ Template "${name}" (ID: ${dstTid})`);
-      } catch (e) {
-        warn.push(`  ✗ Template "${name}": ${e.message}`);
-      }
-    }
-
-    // Se creazione fallita, cerca se già presente per nome
-    if (!dstTid) {
-      try {
-        const existing = await getAll(auth, `${dstWsBase}/templates`, 'template');
-        const match = existing.find(x => x.name?.toLowerCase() === name.toLowerCase());
-        if (match?.templateId) {
-          dstTid = match.templateId;
-          log.push(`  ✓ Template "${name}" già presente (ID: ${dstTid})`);
+      if (t?.templateData) {
+        try {
+          const body = { name: t.name, templateData: t.templateData };
+          if (t.galleryReference) body.galleryReference = t.galleryReference;
+          const resp = await apiWrite(() =>
+            gtm.accounts.containers.workspaces.templates.create({
+              parent: dstWsBase,
+              requestBody: body,
+            })
+          );
+          dstTid = resp.data.templateId;
+          log.push(`  ✓ "${name}" (ID: ${dstTid})`);
+          tmplUserOk++;
+        } catch (e) {
+          warn.push(`  ✗ Template "${name}": ${e.message}`);
         }
-      } catch (_) {}
-    }
+      }
 
-    if (dstTid) typeMap[srcType] = `cvt_${dstContId}_${dstTid}`;
-    else warn.push(`  ⚠ Template "${name}" (${srcType}) non installato — verifica manualmente`);
+      if (!dstTid) {
+        try {
+          const existing = await getAll(auth, `${dstWsBase}/templates`, 'template');
+          const match = existing.find(x => x.name?.toLowerCase() === name.toLowerCase());
+          if (match?.templateId) {
+            dstTid = match.templateId;
+            log.push(`  ✓ "${name}" già presente (ID: ${dstTid})`);
+            tmplUserOk++;
+          }
+        } catch (_) {}
+      }
+
+      if (dstTid) typeMap[srcType] = `cvt_${dstContId}_${dstTid}`;
+      else warn.push(`  ⚠ Template "${name}" non installato — i tag che lo usano potrebbero fallire`);
+    }
   }
 
-  // ── Template gallery (cvt_XXXXX — ID universale, no remapping necessario) ─
+  // 2c. Installa template gallery PRIMA di copiare tag/variabili
   if (neededGalleryTypes.size > 0) {
+    log.push(`Template gallery (${neededGalleryTypes.size})…`);
     const existDst = await getAll(auth, `${dstWsBase}/templates`, 'template');
     const existNames = new Set(existDst.map(t => (t.name || '').toLowerCase()));
-    let galleryOk = 0;
 
     for (const srcTmpl of srcGalleryTemplates) {
       const name = srcTmpl.name || '';
       if (existNames.has(name.toLowerCase())) {
-        log.push(`  ✓ Gallery template "${name}" già presente`);
-        galleryOk++;
+        log.push(`  ✓ "${name}" già presente`);
+        tmplGalleryOk++;
         continue;
       }
       if (!srcTmpl.templateData) {
-        warn.push(`  ⚠ Gallery template "${name}": templateData non disponibile`);
+        warn.push(`  ⚠ Gallery template "${name}": templateData non disponibile (potrebbe richiedere accettazione manuale dei ToS in GTM)`);
         continue;
       }
       try {
@@ -241,85 +211,102 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
             requestBody: body,
           })
         );
-        log.push(`  ✓ Gallery template "${name}" installato`);
-        galleryOk++;
+        log.push(`  ✓ "${name}" installato`);
+        tmplGalleryOk++;
       } catch (e) {
         warn.push(`  ⚠ Gallery template "${name}": ${e.message}`);
       }
     }
-    log.push(`Gallery template: ${galleryOk}/${srcGalleryTemplates.length}`);
   }
 
-  // ── 7. Copia variabili ───────────────────────────────────────────────────
-  const varMap = {}; // srcVariableId → dstVariableId
-  log.push(`Variabili: ${srcVars.length}`);
-  await sleep(3000); // pausa pre-scrittura per recuperare quota
+  // 2d. Copia cartelle
+  const folderMap = {};
+  if (srcFolders.length) {
+    log.push(`Cartelle (${srcFolders.length})…`);
+    for (const f of srcFolders) {
+      try {
+        const res = await apiWrite(() =>
+          gtm.accounts.containers.workspaces.folders.create({
+            parent: dstWsBase,
+            requestBody: { name: rename(f.name) },
+          })
+        );
+        folderMap[f.folderId] = res.data.folderId;
+        log.push(`  ✓ "${f.name}"`);
+      } catch (e) {
+        warn.push(`  ✗ Cartella "${f.name}": ${e.message}`);
+      }
+    }
+  }
 
+  // 2e. Abilita built-in variables
+  if (srcBuiltIns.length) {
+    try {
+      const types = srcBuiltIns.map(b => b.type);
+      await apiWrite(() =>
+        gtm.accounts.containers.workspaces.built_in_variables.create({
+          parent: dstWsBase,
+          type: types,
+        })
+      );
+      log.push(`Built-in variables abilitate: ${types.length}`);
+    } catch (e) {
+      warn.push(`Built-in variables: ${e.message}`);
+    }
+  }
+
+  await sleep(3000); // pausa per recuperare quota API prima delle scritture massive
+
+  // 2f. Copia variabili
+  const varMap = {};
+  log.push(`Variabili (${srcVars.length})…`);
   for (const v of srcVars) {
     try {
       const body = cleanEntity({ ...v });
       body.name = rename(v.name);
       if (body.type && typeMap[body.type]) body.type = typeMap[body.type];
-      if (body.parentFolderId && folderMap[body.parentFolderId]) {
-        body.parentFolderId = folderMap[body.parentFolderId];
-      } else {
-        delete body.parentFolderId;
-      }
+      if (body.parentFolderId && folderMap[body.parentFolderId]) body.parentFolderId = folderMap[body.parentFolderId];
+      else delete body.parentFolderId;
       const res = await apiWrite(() =>
-        gtm.accounts.containers.workspaces.variables.create({
-          parent: dstWsBase,
-          requestBody: body,
-        })
+        gtm.accounts.containers.workspaces.variables.create({ parent: dstWsBase, requestBody: body })
       );
       varMap[v.variableId] = res.data.variableId;
-      log.push(`  ✓ Variabile "${v.name}"`);
+      log.push(`  ✓ "${v.name}"`);
     } catch (e) {
       warn.push(`  ✗ Variabile "${v.name}": ${e.message}`);
     }
   }
 
-  // ── 8. Copia trigger ─────────────────────────────────────────────────────
-  const trigMap = {}; // srcTriggerId → dstTriggerId
-  log.push(`Trigger: ${srcTrigs.length}`);
-
+  // 2g. Copia trigger
+  const trigMap = {};
+  log.push(`Trigger (${srcTrigs.length})…`);
   for (const t of srcTrigs) {
     try {
       const body = cleanEntity({ ...t });
       body.name = rename(t.name);
-      if (body.parentFolderId && folderMap[body.parentFolderId]) {
-        body.parentFolderId = folderMap[body.parentFolderId];
-      } else {
-        delete body.parentFolderId;
-      }
+      if (body.parentFolderId && folderMap[body.parentFolderId]) body.parentFolderId = folderMap[body.parentFolderId];
+      else delete body.parentFolderId;
       const res = await apiWrite(() =>
-        gtm.accounts.containers.workspaces.triggers.create({
-          parent: dstWsBase,
-          requestBody: body,
-        })
+        gtm.accounts.containers.workspaces.triggers.create({ parent: dstWsBase, requestBody: body })
       );
       trigMap[t.triggerId] = res.data.triggerId;
-      log.push(`  ✓ Trigger "${t.name}"`);
+      log.push(`  ✓ "${t.name}"`);
     } catch (e) {
       warn.push(`  ✗ Trigger "${t.name}": ${e.message}`);
     }
   }
 
-  // ── 9. Copia tag ─────────────────────────────────────────────────────────
+  // 2h. Copia tag
   const srcTrigIds = new Set(srcTrigs.map(t => t.triggerId));
   const remapTrigId = id => trigMap[id] || (!srcTrigIds.has(id) ? id : null);
-
   let tagOk = 0;
-  log.push(`Tag: ${srcTags.length}`);
 
+  log.push(`Tag (${srcTags.length})…`);
   for (const tag of srcTags) {
     try {
       const body = cleanEntity({ ...tag });
       body.name = rename(tag.name);
-
-      // Remap template type
       if (body.type && typeMap[body.type]) body.type = typeMap[body.type];
-
-      // Remap trigger IDs
       if (body.firingTriggerId) {
         body.firingTriggerId = body.firingTriggerId.map(remapTrigId).filter(Boolean);
         if (!body.firingTriggerId.length) delete body.firingTriggerId;
@@ -332,8 +319,6 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
         body.disablingTriggerId = body.disablingTriggerId.map(remapTrigId).filter(Boolean);
         if (!body.disablingTriggerId.length) delete body.disablingTriggerId;
       }
-
-      // Remap tag sequencing
       if (body.setupTag) {
         body.setupTag = body.setupTag
           .map(s => ({ ...s, tagName: rename(s.tagName) }))
@@ -344,22 +329,14 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
           .map(s => ({ ...s, tagName: rename(s.tagName) }))
           .filter(s => srcTags.some(t => rename(t.name) === s.tagName));
       }
-
-      // Remap folder
-      if (body.parentFolderId && folderMap[body.parentFolderId]) {
-        body.parentFolderId = folderMap[body.parentFolderId];
-      } else {
-        delete body.parentFolderId;
-      }
+      if (body.parentFolderId && folderMap[body.parentFolderId]) body.parentFolderId = folderMap[body.parentFolderId];
+      else delete body.parentFolderId;
 
       await apiWrite(() =>
-        gtm.accounts.containers.workspaces.tags.create({
-          parent: dstWsBase,
-          requestBody: body,
-        })
+        gtm.accounts.containers.workspaces.tags.create({ parent: dstWsBase, requestBody: body })
       );
       tagOk++;
-      log.push(`  ✓ Tag "${tag.name}"`);
+      log.push(`  ✓ "${tag.name}"`);
     } catch (e) {
       warn.push(`  ✗ Tag "${tag.name}": ${e.message}`);
     }
@@ -368,13 +345,14 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
   return {
     workspace: { id: dstWs.workspaceId, name: dstWs.name },
     counts: {
+      templates: tmplUserOk + tmplGalleryOk,
       folders: Object.keys(folderMap).length,
-      templates: Object.keys(typeMap).length + galleryOk,
       variables: Object.keys(varMap).length,
       triggers: Object.keys(trigMap).length,
       tags: tagOk,
     },
     totals: {
+      templates: neededUserTmplIds.size + neededGalleryTypes.size,
       folders: srcFolders.length,
       variables: srcVars.length,
       triggers: srcTrigs.length,
