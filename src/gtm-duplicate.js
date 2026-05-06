@@ -141,41 +141,51 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
   }
 
   // ── 6. Installa template ─────────────────────────────────────────────────
-  const typeMap = {}; // srcType → dstType
+  const typeMap = {}; // srcType → dstType (solo per template utente)
   const srcContId = srcContainerId;
   const dstContId = dstContainerId;
 
-  // Identifica quali template servono
-  const neededTmplIds = new Set();
+  // Identifica template usati da tag e variabili
+  const neededUserTmplIds = new Set();  // numeric ids per template utente
+  const neededGalleryTypes = new Set(); // cvt_XXXXX per gallery
   [...srcTags, ...srcVars].forEach(e => {
     const tid = templateIdFromType(e.type);
-    if (tid) neededTmplIds.add(tid);
+    if (!tid) return;
+    if (isGalleryTemplateId(tid)) neededGalleryTypes.add(tid);
+    else neededUserTmplIds.add(tid);
   });
 
-  const byTmplId = {};
-  srcTemplatesFull.forEach(t => {
-    byTmplId[t.templateId] = { template: t };
-  });
+  // Fetch templateData individuale per ogni template (la list API non la restituisce)
+  const srcTemplatesByNumericId = {};
+  for (const t of srcTemplatesFull) {
+    try {
+      const r = await auth.request({
+        url: `https://www.googleapis.com/tagmanager/v2/${srcWsBase}/templates/${t.templateId}`,
+        method: 'GET',
+      });
+      await sleep(READ_DELAY_MS);
+      srcTemplatesByNumericId[t.templateId] = r.data;
+    } catch (_) {
+      srcTemplatesByNumericId[t.templateId] = t;
+    }
+  }
 
-  const tmplEntries = [...neededTmplIds]
-    .map(tid => [tid, byTmplId[tid]])
-    .filter(([, v]) => v);
+  const srcGalleryTemplates = Object.values(srcTemplatesByNumericId).filter(t => t.galleryReference);
+  const srcUserTemplates    = Object.values(srcTemplatesByNumericId).filter(t => !t.galleryReference);
 
-  const userTmplEntries = tmplEntries.filter(([tid]) => !isGalleryTemplateId(tid));
-  const galleryTmplEntries = tmplEntries.filter(([tid]) => isGalleryTemplateId(tid));
-  let galleryOk = 0;
+  log.push(`Template: ${neededUserTmplIds.size} utente · ${neededGalleryTypes.size} gallery`);
 
-  log.push(`Template: ${userTmplEntries.length} utente · ${galleryTmplEntries.length} gallery`);
-
-  // Template creati dall'utente
-  for (const [srcTid, { template }] of userTmplEntries) {
+  // ── Template utente (cvt_<containerId>_<numericId>) ──────────────────────
+  for (const srcTid of neededUserTmplIds) {
+    const t = srcTemplatesByNumericId[srcTid];
     const srcType = `cvt_${srcContId}_${srcTid}`;
-    const name = template?.name || `Template ${srcTid}`;
+    const name = t?.name || `Template ${srcTid}`;
     let dstTid = null;
-    if (template?.templateData) {
+
+    if (t?.templateData) {
       try {
-        const body = { name: template.name, templateData: template.templateData };
-        if (template.galleryReference) body.galleryReference = template.galleryReference;
+        const body = { name: t.name, templateData: t.templateData };
+        if (t.galleryReference) body.galleryReference = t.galleryReference;
         const resp = await apiWrite(() =>
           gtm.accounts.containers.workspaces.templates.create({
             parent: dstWsBase,
@@ -188,39 +198,43 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
         warn.push(`  ✗ Template "${name}": ${e.message}`);
       }
     }
+
+    // Se creazione fallita, cerca se già presente per nome
     if (!dstTid) {
-      // Cerca se già presente in destinazione
       try {
         const existing = await getAll(auth, `${dstWsBase}/templates`, 'template');
-        const match = existing.find(t => t.name?.toLowerCase() === name.toLowerCase());
+        const match = existing.find(x => x.name?.toLowerCase() === name.toLowerCase());
         if (match?.templateId) {
           dstTid = match.templateId;
-          log.push(`  ✓ Template "${name}" già presente`);
+          log.push(`  ✓ Template "${name}" già presente (ID: ${dstTid})`);
         }
       } catch (_) {}
     }
+
     if (dstTid) typeMap[srcType] = `cvt_${dstContId}_${dstTid}`;
+    else warn.push(`  ⚠ Template "${name}" (${srcType}) non installato — verifica manualmente`);
   }
 
-  // Template gallery
-  if (galleryTmplEntries.length) {
+  // ── Template gallery (cvt_XXXXX — ID universale, no remapping necessario) ─
+  if (neededGalleryTypes.size > 0) {
     const existDst = await getAll(auth, `${dstWsBase}/templates`, 'template');
     const existNames = new Set(existDst.map(t => (t.name || '').toLowerCase()));
+    let galleryOk = 0;
 
-    for (const [, { template }] of galleryTmplEntries) {
-      const name = template?.name || '';
+    for (const srcTmpl of srcGalleryTemplates) {
+      const name = srcTmpl.name || '';
       if (existNames.has(name.toLowerCase())) {
         log.push(`  ✓ Gallery template "${name}" già presente`);
         galleryOk++;
         continue;
       }
-      if (!template?.templateData) {
-        warn.push(`  ⚠ Gallery template "${name}": nessun templateData`);
+      if (!srcTmpl.templateData) {
+        warn.push(`  ⚠ Gallery template "${name}": templateData non disponibile`);
         continue;
       }
       try {
-        const body = { name: template.name, templateData: template.templateData };
-        if (template.galleryReference) body.galleryReference = template.galleryReference;
+        const body = { name: srcTmpl.name, templateData: srcTmpl.templateData };
+        if (srcTmpl.galleryReference) body.galleryReference = srcTmpl.galleryReference;
         await apiWrite(() =>
           gtm.accounts.containers.workspaces.templates.create({
             parent: dstWsBase,
@@ -233,6 +247,7 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
         warn.push(`  ⚠ Gallery template "${name}": ${e.message}`);
       }
     }
+    log.push(`Gallery template: ${galleryOk}/${srcGalleryTemplates.length}`);
   }
 
   // ── 7. Copia variabili ───────────────────────────────────────────────────
