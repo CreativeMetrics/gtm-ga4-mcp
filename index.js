@@ -11,7 +11,7 @@ const { duplicateContainer } = require('./src/gtm-duplicate.js');
 
 const server = new Server(
   { name: 'gtm-ga4-mcp', version: '1.0.0' },
-  { capabilities: { tools: {} } }
+  { capabilities: { tools: {} }, timeout: 120000 }
 );
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({

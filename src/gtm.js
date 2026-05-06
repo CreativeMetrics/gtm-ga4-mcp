@@ -26,11 +26,16 @@ async function listWorkspaces(auth, accountId, containerId) {
   return res.data.workspace || [];
 }
 
+const wsCache = new Map();
+
 async function resolveWorkspaceId(auth, accountId, containerId, workspaceId) {
   if (workspaceId) return workspaceId;
+  const cacheKey = `${accountId}:${containerId}`;
+  if (wsCache.has(cacheKey)) return wsCache.get(cacheKey);
   const workspaces = await listWorkspaces(auth, accountId, containerId);
   if (!workspaces.length) throw new Error('Nessun workspace trovato nel container.');
   const defaultWs = workspaces.find(w => w.name === 'Default Workspace') || workspaces[0];
+  wsCache.set(cacheKey, defaultWs.workspaceId);
   return defaultWs.workspaceId;
 }
 

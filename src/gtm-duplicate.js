@@ -52,10 +52,13 @@ async function apiWrite(fn, attempt = 0) {
   }
 }
 
-async function getAll(gtm, path, key) {
-  const res = await gtm.request({ url: `https://www.googleapis.com/tagmanager/v2/${path}` });
+async function getAll(auth, path, key) {
+  const r = await auth.request({
+    url: `https://www.googleapis.com/tagmanager/v2/${path}`,
+    method: 'GET',
+  });
   await sleep(READ_DELAY_MS);
-  return res.data[key] || [];
+  return (r.data && r.data[key]) || [];
 }
 
 async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccountId, dstContainerId, options = {}) {
@@ -71,7 +74,7 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
   const rename = name => `${prefix}${name}${suffix}`;
 
   // ── 1. Recupera workspace sorgente (default) ─────────────────────────────
-  const srcWorkspaces = await getAll(gtm, `${srcBase}/workspaces`, 'workspace');
+  const srcWorkspaces = await getAll(auth, `${srcBase}/workspaces`, 'workspace');
   const srcWs = srcWorkspaces.find(w => w.name === 'Default Workspace') || srcWorkspaces[0];
   if (!srcWs) throw new Error('Nessun workspace trovato nel container sorgente.');
   const srcWsBase = `${srcBase}/workspaces/${srcWs.workspaceId}`;
@@ -88,22 +91,14 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
   const dstWsBase = `${dstBase}/workspaces/${dstWs.workspaceId}`;
   log.push(`Workspace "${dstWs.name}" creato (ID: ${dstWs.workspaceId})`);
 
-  // ── 3. Leggi tutto dal sorgente ──────────────────────────────────────────
-  const [srcFolders, srcBuiltIn, srcTemplatesFull, srcVars, srcTrigs, srcTags] = await Promise.all([
-    getAll(gtm, `${srcWsBase}/folders`, 'folder'),
-    gtm.accounts.containers.workspaces.getStatus({ path: srcWsBase })
-      .then(r => { sleep(READ_DELAY_MS); return []; }) // built-in handled separately
-      .catch(() => []),
-    getAll(gtm, `${srcWsBase}/templates`, 'template'),
-    getAll(gtm, `${srcWsBase}/variables`, 'variable'),
-    getAll(gtm, `${srcWsBase}/triggers`, 'trigger'),
-    getAll(gtm, `${srcWsBase}/tags`, 'tag'),
+  // ── 3. Leggi tutto dal sorgente in parallelo ─────────────────────────────
+  const [srcFolders, srcTemplatesFull, srcVars, srcTrigs, srcTags] = await Promise.all([
+    getAll(auth, `${srcWsBase}/folders`, 'folder'),
+    getAll(auth, `${srcWsBase}/templates`, 'template'),
+    getAll(auth, `${srcWsBase}/variables`, 'variable'),
+    getAll(auth, `${srcWsBase}/triggers`, 'trigger'),
+    getAll(auth, `${srcWsBase}/tags`, 'tag'),
   ]);
-
-  // Built-in variables
-  const srcContainerRes = await gtm.accounts.containers.get({ path: `accounts/${srcAccountId}/containers/${srcContainerId}` });
-  await sleep(READ_DELAY_MS);
-  const srcContainer = srcContainerRes.data;
 
   // ── 4. Copia cartelle ────────────────────────────────────────────────────
   const folderMap = {}; // srcFolderId → dstFolderId
@@ -196,7 +191,7 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
     if (!dstTid) {
       // Cerca se già presente in destinazione
       try {
-        const existing = await getAll(gtm, `${dstWsBase}/templates`, 'template');
+        const existing = await getAll(auth, `${dstWsBase}/templates`, 'template');
         const match = existing.find(t => t.name?.toLowerCase() === name.toLowerCase());
         if (match?.templateId) {
           dstTid = match.templateId;
@@ -209,7 +204,7 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
 
   // Template gallery
   if (galleryTmplEntries.length) {
-    const existDst = await getAll(gtm, `${dstWsBase}/templates`, 'template');
+    const existDst = await getAll(auth, `${dstWsBase}/templates`, 'template');
     const existNames = new Set(existDst.map(t => (t.name || '').toLowerCase()));
 
     for (const [, { template }] of galleryTmplEntries) {
