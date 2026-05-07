@@ -203,15 +203,7 @@ async function installGalleryTemplate(gtm, wsPath, containerId, galleryRef) {
     const res = await apiWrite(() =>
       gtm.accounts.containers.workspaces.templates.create({
         parent: wsPath,
-        requestBody: {
-          name: galleryRef.name,
-          templateData,
-          galleryReference: {
-            host: 'tagmanager.google.com',
-            owner: galleryRef.owner,
-            repository: galleryRef.repository,
-          },
-        },
+        requestBody: { name: galleryRef.name, templateData },
       })
     );
     return `cvt_${containerId}_${res.data.templateId}`;
