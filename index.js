@@ -280,6 +280,77 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ['src_account_id', 'src_container_id', 'dst_account_id', 'dst_container_id'],
       },
     },
+    // User Permissions
+    {
+      name: 'gtm_list_users',
+      description: 'Elenca tutti gli utenti con accesso a un account GTM e i loro permessi sui container.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          account_id: { type: 'string' },
+        },
+        required: ['account_id'],
+      },
+    },
+    {
+      name: 'gtm_add_user',
+      description: 'Aggiunge un utente a un account GTM con permessi specifici sui container.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          account_id: { type: 'string' },
+          email: { type: 'string', description: 'Email Google dell\'utente' },
+          account_permission: { type: 'string', enum: ['user', 'admin'], description: 'Permesso account (default: user)' },
+          container_permissions: {
+            type: 'array',
+            description: 'Lista permessi per container',
+            items: {
+              type: 'object',
+              properties: {
+                containerId: { type: 'string' },
+                permission: { type: 'string', enum: ['no_access', 'read', 'edit', 'approve', 'publish'] },
+              },
+            },
+          },
+        },
+        required: ['account_id', 'email'],
+      },
+    },
+    {
+      name: 'gtm_update_user',
+      description: 'Modifica i permessi di un utente esistente su un account GTM.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          account_id: { type: 'string' },
+          user_permission_id: { type: 'string', description: 'ID permesso utente (da gtm_list_users)' },
+          account_permission: { type: 'string', enum: ['user', 'admin'] },
+          container_permissions: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                containerId: { type: 'string' },
+                permission: { type: 'string', enum: ['no_access', 'read', 'edit', 'approve', 'publish'] },
+              },
+            },
+          },
+        },
+        required: ['account_id', 'user_permission_id'],
+      },
+    },
+    {
+      name: 'gtm_remove_user',
+      description: 'Rimuove completamente l\'accesso di un utente a un account GTM.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          account_id: { type: 'string' },
+          user_permission_id: { type: 'string', description: 'ID permesso utente (da gtm_list_users)' },
+        },
+        required: ['account_id', 'user_permission_id'],
+      },
+    },
     {
       name: 'gtm_publish_container',
       description: 'Pubblica il workspace GTM corrente creando una nuova versione.',
@@ -465,6 +536,18 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case 'gtm_publish_container':
         result = await gtm.publishContainer(auth, args.account_id, args.container_id, args.workspace_id);
+        break;
+      case 'gtm_list_users':
+        result = await gtm.listUsers(auth, args.account_id);
+        break;
+      case 'gtm_add_user':
+        result = await gtm.addUser(auth, args.account_id, args.email, args.account_permission, args.container_permissions);
+        break;
+      case 'gtm_update_user':
+        result = await gtm.updateUser(auth, args.account_id, args.user_permission_id, args.account_permission, args.container_permissions);
+        break;
+      case 'gtm_remove_user':
+        result = await gtm.removeUser(auth, args.account_id, args.user_permission_id);
         break;
 
       // GA4

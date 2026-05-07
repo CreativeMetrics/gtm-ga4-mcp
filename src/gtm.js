@@ -225,6 +225,58 @@ async function publishContainer(auth, accountId, containerId, workspaceId) {
   return publishRes.data;
 }
 
+// ── User Permissions ──────────────────────────────────────────────────────────
+
+async function listUsers(auth, accountId) {
+  const gtm = getTagManager(auth);
+  const res = await gtm.accounts.user_permissions.list({
+    parent: `accounts/${accountId}`,
+  });
+  return res.data.userPermission || [];
+}
+
+async function addUser(auth, accountId, email, accountPermission, containerPermissions) {
+  // containerPermissions: [{ containerId, permission }]
+  // accountPermission: 'user' | 'admin'
+  // container permission: 'read' | 'edit' | 'approve' | 'publish' | 'no_access'
+  const gtm = getTagManager(auth);
+  const res = await gtm.accounts.user_permissions.create({
+    parent: `accounts/${accountId}`,
+    requestBody: {
+      emailAddress: email,
+      accountAccess: { permission: accountPermission || 'user' },
+      containerAccess: (containerPermissions || []).map(c => ({
+        containerId: c.containerId,
+        permission: c.permission,
+      })),
+    },
+  });
+  return res.data;
+}
+
+async function updateUser(auth, accountId, userPermissionId, accountPermission, containerPermissions) {
+  const gtm = getTagManager(auth);
+  const res = await gtm.accounts.user_permissions.update({
+    path: `accounts/${accountId}/user_permissions/${userPermissionId}`,
+    requestBody: {
+      accountAccess: { permission: accountPermission || 'user' },
+      containerAccess: (containerPermissions || []).map(c => ({
+        containerId: c.containerId,
+        permission: c.permission,
+      })),
+    },
+  });
+  return res.data;
+}
+
+async function removeUser(auth, accountId, userPermissionId) {
+  const gtm = getTagManager(auth);
+  await gtm.accounts.user_permissions.delete({
+    path: `accounts/${accountId}/user_permissions/${userPermissionId}`,
+  });
+  return { deleted: true, userPermissionId };
+}
+
 module.exports = {
   listAccounts,
   listContainers,
@@ -245,4 +297,8 @@ module.exports = {
   updateVariable,
   deleteVariable,
   publishContainer,
+  listUsers,
+  addUser,
+  updateUser,
+  removeUser,
 };
