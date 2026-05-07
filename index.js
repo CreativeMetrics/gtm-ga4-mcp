@@ -8,6 +8,7 @@ const { getAuthClient, getAuthUrl, exchangeCode } = require('./src/auth.js');
 const gtm = require('./src/gtm.js');
 const ga4 = require('./src/ga4.js');
 const { duplicateContainer } = require('./src/gtm-duplicate.js');
+const { scanUrl } = require('./src/tag-detector.js');
 
 const server = new Server(
   { name: 'gtm-ga4-mcp', version: '1.0.0' },
@@ -365,6 +366,33 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
 
+    // Tag Detection
+    {
+      name: 'scan_url',
+      description: 'Scansiona un URL con un browser reale e rileva tutti i tag attivi (analytics, advertising, CMP, live chat, ecc.) tramite analisi di rete, HTML e variabili JavaScript. Accetta automaticamente i cookie banner.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'URL del sito da analizzare (es. https://www.esempio.it)' },
+        },
+        required: ['url'],
+      },
+    },
+    {
+      name: 'compare_url_with_container',
+      description: 'Scansiona un URL e confronta i tag rilevati con quelli configurati in un container GTM. Identifica tag attivi sul sito, tag in GTM non rilevati sul sito, e tag sul sito non in GTM.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'URL del sito da analizzare' },
+          account_id: { type: 'string' },
+          container_id: { type: 'string' },
+          workspace_id: { type: 'string', description: 'Opzionale' },
+        },
+        required: ['url', 'account_id', 'container_id'],
+      },
+    },
+
     // GA4
     {
       name: 'ga4_list_properties',
@@ -582,6 +610,49 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case 'ga4_list_conversion_events':
         result = await ga4.listConversionEvents(auth, args.property_id);
         break;
+
+      // Tag Detection
+      case 'scan_url':
+        result = await scanUrl(args.url);
+        break;
+      case 'compare_url_with_container': {
+        const [scanResult, gtmTags] = await Promise.all([
+          scanUrl(args.url),
+          gtm.listTags(auth, args.account_id, args.container_id, args.workspace_id),
+        ]);
+        const detectedNames = new Set(scanResult.tags.map(t => t.name.toLowerCase()));
+        const gtmTagTypes = gtmTags.map(t => t.type || '');
+        // Map well-known GTM tag types to detected tag names
+        const GTM_TYPE_MAP = {
+          'ua':         'Google Analytics Universal (UA)',
+          'googtag':    'Google Analytics 4 (GA4)',
+          'ga4':        'Google Analytics 4 (GA4)',
+          'awct':       'Google Ads / Conversion',
+          'sp':         'Snapchat Pixel',
+          'fls':        'DoubleClick / Campaign Manager',
+          'html':       null,
+          'img':        null,
+        };
+        const gtmTagsSummary = gtmTags.map(t => ({
+          name: t.name,
+          type: t.type,
+          paused: t.paused || false,
+        }));
+        result = {
+          url: scanResult.url,
+          elapsed_ms: scanResult.elapsed_ms,
+          cookie_banner_accepted: scanResult.cookie_banner_accepted,
+          detected_on_site: scanResult.tags,
+          gtm_tags_count: gtmTags.length,
+          gtm_tags: gtmTagsSummary,
+          summary: {
+            tags_on_site: scanResult.tags_found,
+            tags_in_gtm: gtmTags.length,
+            note: 'Il confronto diretto tra tag GTM e tag rilevati è approssimativo perché i tag GTM usano tipi tecnici (es. "ua", "googtag") mentre il detector usa nomi commerciali.',
+          },
+        };
+        break;
+      }
 
       default:
         throw new Error(`Tool sconosciuto: ${name}`);
