@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GTM & GA4 MCP — Prompt Guide</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      padding: 40px 20px;
+      min-height: 100vh;
+    }
+
+    .container { max-width: 800px; margin: 0 auto; }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #f8fafc;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 40px;
+    }
+
+    .section { margin-bottom: 36px; }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #475569;
+      margin-bottom: 12px;
+    }
+
+    .prompt-card {
+      background: #1e2433;
+      border: 1px solid #2d3748;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+
+    .prompt-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid #2d3748;
+    }
+
+    .prompt-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #94a3b8;
+    }
+
+    .copy-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #2d3748;
+      border: none;
+      border-radius: 6px;
+      padding: 5px 10px;
+      color: #94a3b8;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .copy-btn:hover { background: #3d4f6b; color: #e2e8f0; }
+    .copy-btn.copied { background: #166534; color: #86efac; }
+
+    .prompt-body {
+      padding: 14px 16px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 13px;
+      line-height: 1.7;
+      color: #e2e8f0;
+      white-space: pre-wrap;
+    }
+
+    .placeholder {
+      background: #1a3a5c;
+      color: #60a5fa;
+      border-radius: 3px;
+      padding: 1px 4px;
+      font-size: 12px;
+    }
+
+    .note {
+      font-size: 12px;
+      color: #475569;
+      margin-top: 6px;
+      padding-left: 2px;
+    }
+
+    .permissions-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+
+    .permissions-table th {
+      text-align: left;
+      padding: 8px 12px;
+      background: #1e2433;
+      border: 1px solid #2d3748;
+      color: #64748b;
+      font-weight: 500;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .permissions-table td {
+      padding: 8px 12px;
+      border: 1px solid #2d3748;
+      color: #94a3b8;
+    }
+
+    .permissions-table tr:nth-child(even) td { background: #181e2a; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .badge-blue { background: #1e3a5f; color: #60a5fa; }
+    .badge-green { background: #14532d; color: #86efac; }
+    .badge-yellow { background: #422006; color: #fbbf24; }
+    .badge-red { background: #450a0a; color: #f87171; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <h1>GTM & GA4 MCP — Prompt Guide</h1>
+  <p class="subtitle">Copia i prompt direttamente in Claude Desktop</p>
+
+  <!-- DUPLICAZIONE -->
+  <div class="section">
+    <div class="section-title">Duplicazione Container</div>
+
+    <div class="prompt-card">
+      <div class="prompt-header">
+        <span class="prompt-label">Duplica container</span>
+        <button class="copy-btn" onclick="copy(this)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copia
+        </button>
+      </div>
+      <div class="prompt-body" data-text="Usa gtm_duplicate_container con
+src_account_id: [ACCOUNT_ID_SORGENTE]
+src_container_id: [CONTAINER_ID_SORGENTE]
+dst_account_id: [ACCOUNT_ID_DESTINAZIONE]
+dst_container_id: [CONTAINER_ID_DESTINAZIONE]">Usa gtm_duplicate_container con
+src_account_id: <span class="placeholder">ACCOUNT_ID_SORGENTE</span>
+src_container_id: <span class="placeholder">CONTAINER_ID_SORGENTE</span>
+dst_account_id: <span class="placeholder">ACCOUNT_ID_DESTINAZIONE</span>
+dst_container_id: <span class="placeholder">CONTAINER_ID_DESTINAZIONE</span></div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header">
+        <span class="prompt-label">Duplica con prefisso sui nomi</span>
+        <button class="copy-btn" onclick="copy(this)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copia
+        </button>
+      </div>
+      <div class="prompt-body" data-text="Usa gtm_duplicate_container con
+src_account_id: [ACCOUNT_ID_SORGENTE]
+src_container_id: [CONTAINER_ID_SORGENTE]
+dst_account_id: [ACCOUNT_ID_DESTINAZIONE]
+dst_container_id: [CONTAINER_ID_DESTINAZIONE]
+prefix: [COPIA] ">Usa gtm_duplicate_container con
+src_account_id: <span class="placeholder">ACCOUNT_ID_SORGENTE</span>
+src_container_id: <span class="placeholder">CONTAINER_ID_SORGENTE</span>
+dst_account_id: <span class="placeholder">ACCOUNT_ID_DESTINAZIONE</span>
+dst_container_id: <span class="placeholder">CONTAINER_ID_DESTINAZIONE</span>
+prefix: [COPIA] </div>
+    </div>
+    <p class="note">⚠ La duplicazione può richiedere 3–5 minuti. Se Claude Desktop va in timeout, controlla GTM — l'operazione potrebbe essere comunque completata.</p>
+  </div>
+
+  <!-- UTENTI -->
+  <div class="section">
+    <div class="section-title">Gestione Utenti</div>
+
+    <div class="prompt-card">
+      <div class="prompt-header">
+        <span class="prompt-label">Elenca utenti e permessi</span>
+        <button class="copy-btn" onclick="copy(this)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copia
+        </button>
+      </div>
+      <div class="prompt-body" data-text="Elenca tutti gli utenti dell'account GTM [ACCOUNT_ID] con i loro permessi">Elenca tutti gli utenti dell'account GTM <span class="placeholder">ACCOUNT_ID</span> con i loro permessi</div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header">
+        <span class="prompt-label">Aggiungi utente</span>
+        <button class="copy-btn" onclick="copy(this)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copia
+        </button>
+      </div>
+      <div class="prompt-body" data-text="Aggiungi [EMAIL] all'account GTM [ACCOUNT_ID]
+con permesso [edit] sul container [CONTAINER_ID]">Aggiungi <span class="placeholder">EMAIL</span> all'account GTM <span class="placeholder">ACCOUNT_ID</span>
+con permesso <span class="placeholder">edit</span> sul container <span class="placeholder">CONTAINER_ID</span></div>
+    </div>
+    <p class="note">Permessi disponibili: <span class="badge badge-blue">read</span> <span class="badge badge-green">edit</span> <span class="badge badge-yellow">approve</span> <span class="badge badge-red">publish</span></p>
+
+    <br>
+    <div class="prompt-card">
+      <div class="prompt-header">
+        <span class="prompt-label">Modifica permessi utente</span>
+        <button class="copy-btn" onclick="copy(this)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copia
+        </button>
+      </div>
+      <div class="prompt-body" data-text="Elenca gli utenti dell'account GTM [ACCOUNT_ID], poi modifica i permessi di [EMAIL] portandolo a [publish] sul container [CONTAINER_ID]">Elenca gli utenti dell'account GTM <span class="placeholder">ACCOUNT_ID</span>, poi modifica i permessi di <span class="placeholder">EMAIL</span> portandolo a <span class="placeholder">publish</span> sul container <span class="placeholder">CONTAINER_ID</span></div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header">
+        <span class="prompt-label">Revoca accesso utente</span>
+        <button class="copy-btn" onclick="copy(this)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copia
+        </button>
+      </div>
+      <div class="prompt-body" data-text="Elenca gli utenti dell'account GTM [ACCOUNT_ID], poi rimuovi completamente l'accesso di [EMAIL]">Elenca gli utenti dell'account GTM <span class="placeholder">ACCOUNT_ID</span>, poi rimuovi completamente l'accesso di <span class="placeholder">EMAIL</span></div>
+    </div>
+    <p class="note">Per modifica e revoca Claude recupera automaticamente lo user_permission_id dall'elenco.</p>
+  </div>
+
+  <!-- RIFERIMENTO PERMESSI -->
+  <div class="section">
+    <div class="section-title">Riferimento Permessi Container</div>
+    <table class="permissions-table">
+      <tr>
+        <th>Permesso</th>
+        <th>Può fare</th>
+      </tr>
+      <tr><td><span class="badge badge-blue">read</span></td><td>Solo visualizzazione</td></tr>
+      <tr><td><span class="badge badge-green">edit</span></td><td>Crea e modifica tag, trigger, variabili</td></tr>
+      <tr><td><span class="badge badge-yellow">approve</span></td><td>Edit + approva versioni</td></tr>
+      <tr><td><span class="badge badge-red">publish</span></td><td>Approve + pubblica versioni live</td></tr>
+      <tr><td><span class="badge" style="background:#1a1a2e;color:#a78bfa">admin</span></td><td>Accesso completo + gestione utenti (livello account)</td></tr>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  function copy(btn) {
+    const card = btn.closest('.prompt-card');
+    const body = card.querySelector('.prompt-body');
+    const text = body.dataset.text || body.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.classList.add('copied');
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copiato`;
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copia`;
+      }, 2000);
+    });
+  }
+</script>
+</body>
+</html>
