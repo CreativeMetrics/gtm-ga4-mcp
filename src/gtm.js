@@ -39,6 +39,38 @@ async function resolveWorkspaceId(auth, accountId, containerId, workspaceId) {
   return defaultWs.workspaceId;
 }
 
+async function copyTemplate(auth, srcAccountId, srcContainerId, srcWorkspaceId, templateName, dstAccountId, dstContainerId, dstWorkspaceId) {
+  const gtm = getTagManager(auth);
+  const srcWsId = await resolveWorkspaceId(auth, srcAccountId, srcContainerId, srcWorkspaceId);
+  const dstWsId = await resolveWorkspaceId(auth, dstAccountId, dstContainerId, dstWorkspaceId);
+
+  // Lista template sorgente
+  const srcRes = await gtm.accounts.containers.workspaces.templates.list({
+    parent: `accounts/${srcAccountId}/containers/${srcContainerId}/workspaces/${srcWsId}`,
+  });
+  const srcTemplates = srcRes.data.template || [];
+  const match = srcTemplates.find(t => t.name?.toLowerCase() === templateName.toLowerCase());
+  if (!match) throw new Error(`Template "${templateName}" non trovato nel container sorgente.`);
+  if (!match.templateData) throw new Error(`Template "${templateName}" trovato ma templateData non disponibile via API.`);
+
+  // Controlla se già presente in destinazione
+  const dstRes = await gtm.accounts.containers.workspaces.templates.list({
+    parent: `accounts/${dstAccountId}/containers/${dstContainerId}/workspaces/${dstWsId}`,
+  });
+  const dstTemplates = dstRes.data.template || [];
+  const existing = dstTemplates.find(t => t.name?.toLowerCase() === templateName.toLowerCase());
+  if (existing) return { status: 'already_exists', template: existing };
+
+  const body = { name: match.name, templateData: match.templateData };
+  if (match.galleryReference) body.galleryReference = match.galleryReference;
+
+  const created = await gtm.accounts.containers.workspaces.templates.create({
+    parent: `accounts/${dstAccountId}/containers/${dstContainerId}/workspaces/${dstWsId}`,
+    requestBody: body,
+  });
+  return { status: 'created', template: created.data };
+}
+
 async function listTemplates(auth, accountId, containerId, workspaceId) {
   const gtm = getTagManager(auth);
   const wsId = await resolveWorkspaceId(auth, accountId, containerId, workspaceId);
@@ -199,6 +231,7 @@ module.exports = {
   listWorkspaces,
   createWorkspace,
   listTemplates,
+  copyTemplate,
   listTags,
   createTag,
   updateTag,

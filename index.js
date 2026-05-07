@@ -62,6 +62,23 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'gtm_copy_template',
+      description: 'Copia un singolo template da un container GTM a un altro per nome. Utile per installare un template specifico senza fare una duplicazione completa.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          src_account_id: { type: 'string' },
+          src_container_id: { type: 'string' },
+          src_workspace_id: { type: 'string', description: 'Opzionale' },
+          template_name: { type: 'string', description: 'Nome esatto del template da copiare' },
+          dst_account_id: { type: 'string' },
+          dst_container_id: { type: 'string' },
+          dst_workspace_id: { type: 'string', description: 'Opzionale' },
+        },
+        required: ['src_account_id', 'src_container_id', 'template_name', 'dst_account_id', 'dst_container_id'],
+      },
+    },
+    {
       name: 'gtm_list_templates',
       description: 'Elenca i template installati in un workspace GTM, incluso il loro tipo (cvt_...) e templateId.',
       inputSchema: {
@@ -382,6 +399,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // GTM
+      case 'gtm_copy_template':
+        result = await gtm.copyTemplate(
+          auth,
+          args.src_account_id, args.src_container_id, args.src_workspace_id,
+          args.template_name,
+          args.dst_account_id, args.dst_container_id, args.dst_workspace_id
+        );
+        break;
       case 'gtm_list_templates':
         result = await gtm.listTemplates(auth, args.account_id, args.container_id, args.workspace_id);
         break;
