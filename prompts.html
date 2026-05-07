@@ -15,22 +15,31 @@
       min-height: 100vh;
     }
 
-    .container { max-width: 800px; margin: 0 auto; }
+    .container { max-width: 860px; margin: 0 auto; }
 
-    h1 {
-      font-size: 24px;
-      font-weight: 700;
-      margin-bottom: 8px;
-      color: #f8fafc;
-    }
+    h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; color: #f8fafc; }
+    .subtitle { font-size: 14px; color: #64748b; margin-bottom: 36px; }
 
-    .subtitle {
-      font-size: 14px;
-      color: #64748b;
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
       margin-bottom: 40px;
     }
 
-    .section { margin-bottom: 36px; }
+    nav a {
+      font-size: 12px;
+      color: #64748b;
+      text-decoration: none;
+      background: #1e2433;
+      border: 1px solid #2d3748;
+      border-radius: 6px;
+      padding: 5px 12px;
+      transition: all 0.15s;
+    }
+    nav a:hover { color: #e2e8f0; border-color: #475569; }
+
+    .section { margin-bottom: 44px; scroll-margin-top: 20px; }
 
     .section-title {
       font-size: 11px;
@@ -38,7 +47,9 @@
       text-transform: uppercase;
       letter-spacing: 0.1em;
       color: #475569;
-      margin-bottom: 12px;
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #1e2433;
     }
 
     .prompt-card {
@@ -53,15 +64,11 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 16px;
+      padding: 10px 16px;
       border-bottom: 1px solid #2d3748;
     }
 
-    .prompt-label {
-      font-size: 13px;
-      font-weight: 500;
-      color: #94a3b8;
-    }
+    .prompt-label { font-size: 13px; font-weight: 500; color: #94a3b8; }
 
     .copy-btn {
       display: flex;
@@ -75,8 +82,8 @@
       font-size: 12px;
       cursor: pointer;
       transition: all 0.15s;
+      white-space: nowrap;
     }
-
     .copy-btn:hover { background: #3d4f6b; color: #e2e8f0; }
     .copy-btn.copied { background: #166534; color: #86efac; }
 
@@ -89,11 +96,11 @@
       white-space: pre-wrap;
     }
 
-    .placeholder {
+    .ph {
       background: #1a3a5c;
       color: #60a5fa;
       border-radius: 3px;
-      padding: 1px 4px;
+      padding: 1px 5px;
       font-size: 12px;
     }
 
@@ -101,17 +108,32 @@
       font-size: 12px;
       color: #475569;
       margin-top: 6px;
+      margin-bottom: 10px;
       padding-left: 2px;
+      line-height: 1.6;
     }
 
-    .permissions-table {
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .b-blue   { background: #1e3a5f; color: #60a5fa; }
+    .b-green  { background: #14532d; color: #86efac; }
+    .b-yellow { background: #422006; color: #fbbf24; }
+    .b-red    { background: #450a0a; color: #f87171; }
+    .b-purple { background: #1a1a2e; color: #a78bfa; }
+    .b-gray   { background: #1e2433; color: #64748b; border: 1px solid #2d3748; }
+
+    table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 12px;
       font-size: 13px;
     }
-
-    .permissions-table th {
+    th {
       text-align: left;
       padding: 8px 12px;
       background: #1e2433;
@@ -122,165 +144,293 @@
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
-
-    .permissions-table td {
+    td {
       padding: 8px 12px;
       border: 1px solid #2d3748;
       color: #94a3b8;
     }
+    tr:nth-child(even) td { background: #181e2a; }
 
-    .permissions-table tr:nth-child(even) td { background: #181e2a; }
-
-    .badge {
-      display: inline-block;
-      padding: 2px 7px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 500;
-    }
-
-    .badge-blue { background: #1e3a5f; color: #60a5fa; }
-    .badge-green { background: #14532d; color: #86efac; }
-    .badge-yellow { background: #422006; color: #fbbf24; }
-    .badge-red { background: #450a0a; color: #f87171; }
+    .icon { display: inline-block; width: 13px; height: 13px; vertical-align: middle; }
   </style>
 </head>
 <body>
 <div class="container">
 
   <h1>GTM & GA4 MCP — Prompt Guide</h1>
-  <p class="subtitle">Copia i prompt direttamente in Claude Desktop</p>
+  <p class="subtitle">Copia i prompt direttamente in Claude Desktop · <a href="https://github.com/CreativeMetrics/gtm-ga4-mcp" style="color:#475569">GitHub</a></p>
 
-  <!-- DUPLICAZIONE -->
-  <div class="section">
-    <div class="section-title">Duplicazione Container</div>
+  <nav>
+    <a href="#auth">Autenticazione</a>
+    <a href="#gtm-read">GTM — Lettura</a>
+    <a href="#gtm-write">GTM — Scrittura</a>
+    <a href="#gtm-duplicate">Duplicazione</a>
+    <a href="#gtm-templates">Template</a>
+    <a href="#gtm-users">Utenti</a>
+    <a href="#ga4-read">GA4 — Lettura</a>
+    <a href="#ga4-write">GA4 — Scrittura</a>
+    <a href="#ga4-report">GA4 — Report</a>
+  </nav>
+
+  <!-- ── AUTENTICAZIONE ── -->
+  <div class="section" id="auth">
+    <div class="section-title">Autenticazione</div>
 
     <div class="prompt-card">
-      <div class="prompt-header">
-        <span class="prompt-label">Duplica container</span>
-        <button class="copy-btn" onclick="copy(this)">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          Copia
-        </button>
-      </div>
+      <div class="prompt-header"><span class="prompt-label">Primo accesso — genera link</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Genera il link di autenticazione GTM/GA4">Genera il link di autenticazione GTM/GA4</div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Completa il login con il codice</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Completa il login con il codice: [CODICE]">Completa il login con il codice: <span class="ph">CODICE</span></div>
+    </div>
+    <p class="note">Dopo aver aperto il link nel browser e autorizzato Google, copia il codice mostrato a schermo e usalo nel secondo prompt.</p>
+  </div>
+
+  <!-- ── GTM LETTURA ── -->
+  <div class="section" id="gtm-read">
+    <div class="section-title">GTM — Lettura</div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Elenca account GTM</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elenca tutti i miei account GTM">Elenca tutti i miei account GTM</div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Elenca container</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elenca i container dell'account GTM [ACCOUNT_ID]">Elenca i container dell'account GTM <span class="ph">ACCOUNT_ID</span></div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Elenca workspace</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elenca i workspace del container [CONTAINER_ID] account [ACCOUNT_ID]">Elenca i workspace del container <span class="ph">CONTAINER_ID</span> account <span class="ph">ACCOUNT_ID</span></div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Elenca tag</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elenca i tag del container [CONTAINER_ID] account [ACCOUNT_ID]">Elenca i tag del container <span class="ph">CONTAINER_ID</span> account <span class="ph">ACCOUNT_ID</span></div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Elenca trigger</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elenca i trigger del container [CONTAINER_ID] account [ACCOUNT_ID]">Elenca i trigger del container <span class="ph">CONTAINER_ID</span> account <span class="ph">ACCOUNT_ID</span></div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Elenca variabili</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elenca le variabili del container [CONTAINER_ID] account [ACCOUNT_ID]">Elenca le variabili del container <span class="ph">CONTAINER_ID</span> account <span class="ph">ACCOUNT_ID</span></div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Elenca template installati</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elenca i template installati nel container [CONTAINER_ID] account [ACCOUNT_ID]">Elenca i template installati nel container <span class="ph">CONTAINER_ID</span> account <span class="ph">ACCOUNT_ID</span></div>
+    </div>
+  </div>
+
+  <!-- ── GTM SCRITTURA ── -->
+  <div class="section" id="gtm-write">
+    <div class="section-title">GTM — Scrittura</div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Crea workspace</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Crea un nuovo workspace chiamato [NOME] nel container [CONTAINER_ID] account [ACCOUNT_ID]">Crea un nuovo workspace chiamato <span class="ph">NOME</span> nel container <span class="ph">CONTAINER_ID</span> account <span class="ph">ACCOUNT_ID</span></div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Pubblica container</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Pubblica il container [CONTAINER_ID] account [ACCOUNT_ID]">Pubblica il container <span class="ph">CONTAINER_ID</span> account <span class="ph">ACCOUNT_ID</span></div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Elimina tag</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elimina il tag [TAG_ID] dal container [CONTAINER_ID] account [ACCOUNT_ID]">Elimina il tag <span class="ph">TAG_ID</span> dal container <span class="ph">CONTAINER_ID</span> account <span class="ph">ACCOUNT_ID</span></div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Elimina variabile</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elimina la variabile [VARIABLE_ID] dal container [CONTAINER_ID] account [ACCOUNT_ID]">Elimina la variabile <span class="ph">VARIABLE_ID</span> dal container <span class="ph">CONTAINER_ID</span> account <span class="ph">ACCOUNT_ID</span></div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Elimina trigger</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elimina il trigger [TRIGGER_ID] dal container [CONTAINER_ID] account [ACCOUNT_ID]">Elimina il trigger <span class="ph">TRIGGER_ID</span> dal container <span class="ph">CONTAINER_ID</span> account <span class="ph">ACCOUNT_ID</span></div>
+    </div>
+    <p class="note">Per ottenere gli ID usa prima i prompt di lettura (Elenca tag / trigger / variabili).</p>
+  </div>
+
+  <!-- ── DUPLICAZIONE ── -->
+  <div class="section" id="gtm-duplicate">
+    <div class="section-title">GTM — Duplicazione Container</div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Duplica container</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
       <div class="prompt-body" data-text="Usa gtm_duplicate_container con
 src_account_id: [ACCOUNT_ID_SORGENTE]
 src_container_id: [CONTAINER_ID_SORGENTE]
 dst_account_id: [ACCOUNT_ID_DESTINAZIONE]
 dst_container_id: [CONTAINER_ID_DESTINAZIONE]">Usa gtm_duplicate_container con
-src_account_id: <span class="placeholder">ACCOUNT_ID_SORGENTE</span>
-src_container_id: <span class="placeholder">CONTAINER_ID_SORGENTE</span>
-dst_account_id: <span class="placeholder">ACCOUNT_ID_DESTINAZIONE</span>
-dst_container_id: <span class="placeholder">CONTAINER_ID_DESTINAZIONE</span></div>
+src_account_id: <span class="ph">ACCOUNT_ID_SORGENTE</span>
+src_container_id: <span class="ph">CONTAINER_ID_SORGENTE</span>
+dst_account_id: <span class="ph">ACCOUNT_ID_DESTINAZIONE</span>
+dst_container_id: <span class="ph">CONTAINER_ID_DESTINAZIONE</span></div>
     </div>
 
     <div class="prompt-card">
-      <div class="prompt-header">
-        <span class="prompt-label">Duplica con prefisso sui nomi</span>
-        <button class="copy-btn" onclick="copy(this)">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          Copia
-        </button>
-      </div>
+      <div class="prompt-header"><span class="prompt-label">Duplica con prefisso sui nomi</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
       <div class="prompt-body" data-text="Usa gtm_duplicate_container con
 src_account_id: [ACCOUNT_ID_SORGENTE]
 src_container_id: [CONTAINER_ID_SORGENTE]
 dst_account_id: [ACCOUNT_ID_DESTINAZIONE]
 dst_container_id: [CONTAINER_ID_DESTINAZIONE]
 prefix: [COPIA] ">Usa gtm_duplicate_container con
-src_account_id: <span class="placeholder">ACCOUNT_ID_SORGENTE</span>
-src_container_id: <span class="placeholder">CONTAINER_ID_SORGENTE</span>
-dst_account_id: <span class="placeholder">ACCOUNT_ID_DESTINAZIONE</span>
-dst_container_id: <span class="placeholder">CONTAINER_ID_DESTINAZIONE</span>
+src_account_id: <span class="ph">ACCOUNT_ID_SORGENTE</span>
+src_container_id: <span class="ph">CONTAINER_ID_SORGENTE</span>
+dst_account_id: <span class="ph">ACCOUNT_ID_DESTINAZIONE</span>
+dst_container_id: <span class="ph">CONTAINER_ID_DESTINAZIONE</span>
 prefix: [COPIA] </div>
     </div>
-    <p class="note">⚠ La duplicazione può richiedere 3–5 minuti. Se Claude Desktop va in timeout, controlla GTM — l'operazione potrebbe essere comunque completata.</p>
+    <p class="note">⚠ Può richiedere 3–5 minuti. Se Claude Desktop va in timeout, controlla GTM — l'operazione potrebbe essere comunque completata in background.</p>
   </div>
 
-  <!-- UTENTI -->
-  <div class="section">
-    <div class="section-title">Gestione Utenti</div>
+  <!-- ── TEMPLATE ── -->
+  <div class="section" id="gtm-templates">
+    <div class="section-title">GTM — Template</div>
 
     <div class="prompt-card">
-      <div class="prompt-header">
-        <span class="prompt-label">Elenca utenti e permessi</span>
-        <button class="copy-btn" onclick="copy(this)">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          Copia
-        </button>
-      </div>
-      <div class="prompt-body" data-text="Elenca tutti gli utenti dell'account GTM [ACCOUNT_ID] con i loro permessi">Elenca tutti gli utenti dell'account GTM <span class="placeholder">ACCOUNT_ID</span> con i loro permessi</div>
+      <div class="prompt-header"><span class="prompt-label">Copia template tra container</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Copia il template [NOME_TEMPLATE] dal container [SRC_CONTAINER_ID] account [SRC_ACCOUNT_ID] al container [DST_CONTAINER_ID] account [DST_ACCOUNT_ID]">Copia il template <span class="ph">NOME_TEMPLATE</span> dal container <span class="ph">SRC_CONTAINER_ID</span> account <span class="ph">SRC_ACCOUNT_ID</span> al container <span class="ph">DST_CONTAINER_ID</span> account <span class="ph">DST_ACCOUNT_ID</span></div>
+    </div>
+    <p class="note">Utile per installare un singolo template senza fare una duplicazione completa.</p>
+  </div>
+
+  <!-- ── UTENTI ── -->
+  <div class="section" id="gtm-users">
+    <div class="section-title">GTM — Gestione Utenti</div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Elenca utenti e permessi</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elenca tutti gli utenti dell'account GTM [ACCOUNT_ID] con i loro permessi">Elenca tutti gli utenti dell'account GTM <span class="ph">ACCOUNT_ID</span> con i loro permessi</div>
     </div>
 
     <div class="prompt-card">
-      <div class="prompt-header">
-        <span class="prompt-label">Aggiungi utente</span>
-        <button class="copy-btn" onclick="copy(this)">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          Copia
-        </button>
-      </div>
-      <div class="prompt-body" data-text="Aggiungi [EMAIL] all'account GTM [ACCOUNT_ID]
-con permesso [edit] sul container [CONTAINER_ID]">Aggiungi <span class="placeholder">EMAIL</span> all'account GTM <span class="placeholder">ACCOUNT_ID</span>
-con permesso <span class="placeholder">edit</span> sul container <span class="placeholder">CONTAINER_ID</span></div>
+      <div class="prompt-header"><span class="prompt-label">Aggiungi utente</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Aggiungi [EMAIL] all'account GTM [ACCOUNT_ID] con permesso [edit] sul container [CONTAINER_ID]">Aggiungi <span class="ph">EMAIL</span> all'account GTM <span class="ph">ACCOUNT_ID</span> con permesso <span class="ph">edit</span> sul container <span class="ph">CONTAINER_ID</span></div>
     </div>
-    <p class="note">Permessi disponibili: <span class="badge badge-blue">read</span> <span class="badge badge-green">edit</span> <span class="badge badge-yellow">approve</span> <span class="badge badge-red">publish</span></p>
+    <p class="note">Permessi disponibili: <span class="badge b-blue">read</span> <span class="badge b-green">edit</span> <span class="badge b-yellow">approve</span> <span class="badge b-red">publish</span></p>
+    <br>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Modifica permessi utente</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elenca gli utenti dell'account GTM [ACCOUNT_ID], poi modifica i permessi di [EMAIL] portandolo a [publish] sul container [CONTAINER_ID]">Elenca gli utenti dell'account GTM <span class="ph">ACCOUNT_ID</span>, poi modifica i permessi di <span class="ph">EMAIL</span> portandolo a <span class="ph">publish</span> sul container <span class="ph">CONTAINER_ID</span></div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Revoca accesso utente</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elenca gli utenti dell'account GTM [ACCOUNT_ID], poi rimuovi completamente l'accesso di [EMAIL]">Elenca gli utenti dell'account GTM <span class="ph">ACCOUNT_ID</span>, poi rimuovi completamente l'accesso di <span class="ph">EMAIL</span></div>
+    </div>
+    <p class="note">Per modifica e revoca Claude recupera automaticamente lo user_permission_id elencando prima gli utenti.</p>
 
     <br>
-    <div class="prompt-card">
-      <div class="prompt-header">
-        <span class="prompt-label">Modifica permessi utente</span>
-        <button class="copy-btn" onclick="copy(this)">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          Copia
-        </button>
-      </div>
-      <div class="prompt-body" data-text="Elenca gli utenti dell'account GTM [ACCOUNT_ID], poi modifica i permessi di [EMAIL] portandolo a [publish] sul container [CONTAINER_ID]">Elenca gli utenti dell'account GTM <span class="placeholder">ACCOUNT_ID</span>, poi modifica i permessi di <span class="placeholder">EMAIL</span> portandolo a <span class="placeholder">publish</span> sul container <span class="placeholder">CONTAINER_ID</span></div>
-    </div>
-
-    <div class="prompt-card">
-      <div class="prompt-header">
-        <span class="prompt-label">Revoca accesso utente</span>
-        <button class="copy-btn" onclick="copy(this)">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          Copia
-        </button>
-      </div>
-      <div class="prompt-body" data-text="Elenca gli utenti dell'account GTM [ACCOUNT_ID], poi rimuovi completamente l'accesso di [EMAIL]">Elenca gli utenti dell'account GTM <span class="placeholder">ACCOUNT_ID</span>, poi rimuovi completamente l'accesso di <span class="placeholder">EMAIL</span></div>
-    </div>
-    <p class="note">Per modifica e revoca Claude recupera automaticamente lo user_permission_id dall'elenco.</p>
+    <table>
+      <tr><th>Permesso</th><th>Livello</th><th>Può fare</th></tr>
+      <tr><td><span class="badge b-blue">read</span></td><td>Container</td><td>Solo visualizzazione</td></tr>
+      <tr><td><span class="badge b-green">edit</span></td><td>Container</td><td>Crea e modifica tag, trigger, variabili</td></tr>
+      <tr><td><span class="badge b-yellow">approve</span></td><td>Container</td><td>Edit + approva versioni</td></tr>
+      <tr><td><span class="badge b-red">publish</span></td><td>Container</td><td>Approve + pubblica live</td></tr>
+      <tr><td><span class="badge b-purple">admin</span></td><td>Account</td><td>Accesso completo + gestione utenti</td></tr>
+      <tr><td><span class="badge b-gray">user</span></td><td>Account</td><td>Accesso base all'account</td></tr>
+    </table>
   </div>
 
-  <!-- RIFERIMENTO PERMESSI -->
-  <div class="section">
-    <div class="section-title">Riferimento Permessi Container</div>
-    <table class="permissions-table">
-      <tr>
-        <th>Permesso</th>
-        <th>Può fare</th>
-      </tr>
-      <tr><td><span class="badge badge-blue">read</span></td><td>Solo visualizzazione</td></tr>
-      <tr><td><span class="badge badge-green">edit</span></td><td>Crea e modifica tag, trigger, variabili</td></tr>
-      <tr><td><span class="badge badge-yellow">approve</span></td><td>Edit + approva versioni</td></tr>
-      <tr><td><span class="badge badge-red">publish</span></td><td>Approve + pubblica versioni live</td></tr>
-      <tr><td><span class="badge" style="background:#1a1a2e;color:#a78bfa">admin</span></td><td>Accesso completo + gestione utenti (livello account)</td></tr>
-    </table>
+  <!-- ── GA4 LETTURA ── -->
+  <div class="section" id="ga4-read">
+    <div class="section-title">GA4 — Lettura</div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Elenca proprietà GA4</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elenca tutte le mie proprietà GA4">Elenca tutte le mie proprietà GA4</div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Elenca custom dimension</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elenca le custom dimension della proprietà GA4 [PROPERTY_ID]">Elenca le custom dimension della proprietà GA4 <span class="ph">PROPERTY_ID</span></div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Elenca custom metric</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elenca le custom metric della proprietà GA4 [PROPERTY_ID]">Elenca le custom metric della proprietà GA4 <span class="ph">PROPERTY_ID</span></div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Elenca eventi di conversione</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Elenca gli eventi di conversione della proprietà GA4 [PROPERTY_ID]">Elenca gli eventi di conversione della proprietà GA4 <span class="ph">PROPERTY_ID</span></div>
+    </div>
+  </div>
+
+  <!-- ── GA4 SCRITTURA ── -->
+  <div class="section" id="ga4-write">
+    <div class="section-title">GA4 — Scrittura</div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Crea custom dimension</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Crea una custom dimension nella proprietà GA4 [PROPERTY_ID]
+nome: [NOME]
+parameter_name: [PARAMETER_NAME]
+scope: EVENT">Crea una custom dimension nella proprietà GA4 <span class="ph">PROPERTY_ID</span>
+nome: <span class="ph">NOME</span>
+parameter_name: <span class="ph">PARAMETER_NAME</span>
+scope: EVENT</div>
+    </div>
+    <p class="note">Scope disponibili: <span class="badge b-blue">EVENT</span> <span class="badge b-green">USER</span> <span class="badge b-yellow">ITEM</span></p>
+    <br>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Duplica custom dimension tra proprietà</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Duplica tutte le custom dimension dalla proprietà GA4 [SOURCE_PROPERTY_ID] alla proprietà [TARGET_PROPERTY_ID]">Duplica tutte le custom dimension dalla proprietà GA4 <span class="ph">SOURCE_PROPERTY_ID</span> alla proprietà <span class="ph">TARGET_PROPERTY_ID</span></div>
+    </div>
+  </div>
+
+  <!-- ── GA4 REPORT ── -->
+  <div class="section" id="ga4-report">
+    <div class="section-title">GA4 — Report</div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Sessioni ultimi 7 giorni</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Quante sessioni e utenti attivi ho avuto negli ultimi 7 giorni sulla proprietà GA4 [PROPERTY_ID]?">Quante sessioni e utenti attivi ho avuto negli ultimi 7 giorni sulla proprietà GA4 <span class="ph">PROPERTY_ID</span>?</div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Sessioni per dispositivo</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Mostra le sessioni per tipo di dispositivo negli ultimi 30 giorni sulla proprietà GA4 [PROPERTY_ID]">Mostra le sessioni per tipo di dispositivo negli ultimi 30 giorni sulla proprietà GA4 <span class="ph">PROPERTY_ID</span></div>
+    </div>
+
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Report personalizzato</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Esegui un report GA4 sulla proprietà [PROPERTY_ID]
+metriche: sessions, activeUsers, conversions
+dimensioni: date, deviceCategory
+dal [DATA_INIZIO] al [DATA_FINE]">Esegui un report GA4 sulla proprietà <span class="ph">PROPERTY_ID</span>
+metriche: sessions, activeUsers, conversions
+dimensioni: date, deviceCategory
+dal <span class="ph">DATA_INIZIO</span> al <span class="ph">DATA_FINE</span></div>
+    </div>
+    <p class="note">Per le date puoi usare: <code style="color:#60a5fa;font-size:11px">today</code>, <code style="color:#60a5fa;font-size:11px">yesterday</code>, <code style="color:#60a5fa;font-size:11px">7daysAgo</code>, <code style="color:#60a5fa;font-size:11px">30daysAgo</code> oppure date nel formato <code style="color:#60a5fa;font-size:11px">2025-01-01</code></p>
   </div>
 
 </div>
 
 <script>
-  function copy(btn) {
-    const card = btn.closest('.prompt-card');
-    const body = card.querySelector('.prompt-body');
+  const SVG_COPY = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia`;
+  const SVG_DONE = `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>Copiato`;
+
+  function cp(btn) {
+    const body = btn.closest('.prompt-card').querySelector('.prompt-body');
     const text = body.dataset.text || body.innerText;
     navigator.clipboard.writeText(text).then(() => {
       btn.classList.add('copied');
-      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Copiato`;
-      setTimeout(() => {
-        btn.classList.remove('copied');
-        btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copia`;
-      }, 2000);
+      btn.innerHTML = SVG_DONE;
+      setTimeout(() => { btn.classList.remove('copied'); btn.innerHTML = SVG_COPY; }, 2000);
     });
   }
 </script>
