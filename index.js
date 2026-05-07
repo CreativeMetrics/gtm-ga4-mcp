@@ -9,6 +9,7 @@ const gtm = require('./src/gtm.js');
 const ga4 = require('./src/ga4.js');
 const { duplicateContainer } = require('./src/gtm-duplicate.js');
 const { scanUrl } = require('./src/tag-detector.js');
+const { createTagsFromUrl } = require('./src/gtm-from-scan.js');
 
 const server = new Server(
   { name: 'gtm-ga4-mcp', version: '1.0.0' },
@@ -379,6 +380,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       },
     },
     {
+      name: 'create_tags_from_url',
+      description: 'Scansiona un URL, rileva i tag attivi, estrae gli ID configurati e crea automaticamente i tag corrispondenti in un nuovo workspace GTM. Usa template nativi per GA4/Google Ads e template gallery ufficiali per Meta (Stape), LinkedIn, Clarity, TikTok, Pinterest.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          url: { type: 'string', description: 'URL del sito da analizzare' },
+          account_id: { type: 'string' },
+          container_id: { type: 'string' },
+        },
+        required: ['url', 'account_id', 'container_id'],
+      },
+    },
+    {
       name: 'compare_url_with_container',
       description: 'Scansiona un URL e confronta i tag rilevati con quelli configurati in un container GTM. Identifica tag attivi sul sito, tag in GTM non rilevati sul sito, e tag sul sito non in GTM.',
       inputSchema: {
@@ -612,6 +626,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
 
       // Tag Detection
+      case 'create_tags_from_url':
+        result = await createTagsFromUrl(auth, args.url, args.account_id, args.container_id);
+        break;
       case 'scan_url':
         result = await scanUrl(args.url);
         break;

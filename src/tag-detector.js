@@ -178,6 +178,61 @@ async function acceptCookieBanner(page) {
   return clicked || null;
 }
 
+// ── ID extraction from rendered HTML ─────────────────────────────────────────
+
+function extractIds(html, networkUrls) {
+  const ids = {};
+  const all = networkUrls.join('\n') + '\n' + html;
+
+  // GA4 measurement ID
+  const ga4 = html.match(/gtag\s*\(\s*['"]config['"]\s*,\s*['"]([G]-[A-Z0-9]+)['"]/i);
+  if (ga4) ids.ga4 = ga4[1];
+
+  // Google Ads conversion ID (number only, without AW-)
+  const aw = html.match(/AW-(\d{9,})/);
+  if (aw) ids.googleAdsId = aw[1];
+
+  // Google Ads conversion label (from send_to: 'AW-xxx/label')
+  const conv = html.match(/['"]send_to['"]\s*:\s*['"]AW-\d+\/([A-Za-z0-9_\-]+)['"]/);
+  if (conv) ids.googleAdsConversionLabel = conv[1];
+
+  // Meta / Facebook Pixel ID
+  const fb = html.match(/fbq\s*\(\s*['"]init['"]\s*,\s*['"](\d{14,17})['"]/);
+  if (fb) ids.metaPixel = fb[1];
+
+  // LinkedIn partner ID
+  const li = html.match(/_linkedin_partner_id\s*[=:]\s*['"]?(\d+)['"]?/);
+  if (li) ids.linkedin = li[1];
+
+  // Microsoft Clarity project ID
+  const clarity = html.match(/clarity\s*\(\s*['"]init['"]\s*,\s*['"]([a-zA-Z0-9]{10,})['"]/);
+  if (clarity) ids.clarity = clarity[1];
+
+  // Hotjar site ID
+  const hj = html.match(/hjid\s*[=:,]\s*(\d+)/);
+  if (hj) ids.hotjar = hj[1];
+
+  // TikTok pixel code
+  const tt = html.match(/ttq\.load\s*\(\s*['"]([A-Z0-9]{15,})['"]/);
+  if (tt) ids.tiktok = tt[1];
+
+  // Pinterest tag ID
+  const pin = html.match(/pintrk\s*\(\s*['"]load['"]\s*,\s*['"](\d{13,16})['"]/);
+  if (pin) ids.pinterest = pin[1];
+
+  // HubSpot portal ID
+  const hs = html.match(/hs-scripts\.com\/(\d+)/);
+  if (hs) ids.hubspot = hs[1];
+
+  // Microsoft Bing UET tag ID
+  const uet = html.match(/uetq\.push\s*\(\{[^}]*ti\s*:\s*['"](\d+)['"]/);
+  const uetNet = all.match(/bat\.bing\.com[^"']+ti=(\d+)/);
+  if (uet) ids.bingUet = uet[1];
+  else if (uetNet) ids.bingUet = uetNet[1];
+
+  return ids;
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 async function scanUrl(url) {
@@ -213,6 +268,7 @@ async function scanUrl(url) {
     ]);
 
     const elapsed = Date.now() - startTime;
+    const ids = extractIds(html, networkUrls);
     return {
       url: normalizedUrl,
       elapsed_ms: elapsed,
@@ -225,10 +281,11 @@ async function scanUrl(url) {
         sources: [...sources],
         evidence,
       })),
+      extracted_ids: ids,
     };
   } finally {
     await browser.close();
   }
 }
 
-module.exports = { scanUrl, TAG_SIGNATURES };
+module.exports = { scanUrl, extractIds, TAG_SIGNATURES };

@@ -444,6 +444,12 @@ dal <span class="ph">DATA_INIZIO</span> al <span class="ph">DATA_FINE</span></di
       <div class="prompt-header"><span class="prompt-label">Audit completo sito + GTM</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
       <div class="prompt-body" data-text="Usa compare_url_with_container su https://www.esempio.it con account_id [ACCOUNT_ID] e container_id [CONTAINER_ID]. Poi dimmi: quali tag sono attivi sul sito, quanti tag GTM ci sono in totale e se noti qualcosa di anomalo">Usa compare_url_with_container su <span class="ph">https://www.esempio.it</span> con account_id <span class="ph">ACCOUNT_ID</span> e container_id <span class="ph">CONTAINER_ID</span>. Poi dimmi: quali tag sono attivi sul sito, quanti tag GTM ci sono in totale e se noti qualcosa di anomalo</div>
     </div>
+    <br>
+    <div class="prompt-card">
+      <div class="prompt-header"><span class="prompt-label">Crea tag GTM dai tag rilevati sul sito</span><button class="copy-btn" onclick="cp(this)"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copia</button></div>
+      <div class="prompt-body" data-text="Usa create_tags_from_url su https://www.esempio.it con account_id [ACCOUNT_ID] e container_id [CONTAINER_ID]">Usa create_tags_from_url su <span class="ph">https://www.esempio.it</span> con account_id <span class="ph">ACCOUNT_ID</span> e container_id <span class="ph">CONTAINER_ID</span></div>
+    </div>
+    <p class="note">Scansiona il sito, estrae gli ID configurati e crea i tag in un nuovo workspace GTM con i template corretti. Supporta: GA4 (nativo), Google Ads (nativo), Meta Pixel (Stape), LinkedIn Insight, Microsoft Clarity, TikTok Pixel, Pinterest Tag.</p>
     <p class="note">⚠ La scansione richiede 15–30 secondi perché apre un browser reale. Tag caricati via server-side GTM potrebbero non essere rilevati.</p>
   </div>
 
