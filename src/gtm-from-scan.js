@@ -1,4 +1,5 @@
 const { google } = require('googleapis');
+const https = require('https');
 const { scanUrl } = require('./tag-detector.js');
 
 const API_DELAY_MS = 1200;
@@ -9,14 +10,35 @@ function getGtm(auth) {
 }
 
 // ── Gallery template references ───────────────────────────────────────────────
-// format: { owner, repository, name, paramKey }
+// githubRepo: owner/repo path on GitHub — used to fetch templateData from raw .tpl file
 const GALLERY_REFS = {
-  metaPixel:  { owner: 'stape-io',  repository: 'fb-tag',                       name: 'Meta Pixel',             paramKey: 'pixelId'   },
-  linkedin:   { owner: 'linkedin',  repository: 'linkedin-gtm-community-template', name: 'LinkedIn Insight Tag', paramKey: 'partnerId' },
-  clarity:    { owner: 'microsoft', repository: 'clarity-gtm-template',           name: 'Microsoft Clarity',    paramKey: 'projectId' },
-  tiktok:     { owner: 'tiktok',    repository: 'gtm-template-pixel',             name: 'TikTok Pixel',         paramKey: 'pixelCode' },
-  pinterest:  { owner: 'pinterest', repository: 'ws-gtm-template',               name: 'Pinterest Tag',         paramKey: 'tagId'     },
+  metaPixel: { owner: 'stape-io',  repository: 'fb-tag',                          name: 'Meta Pixel',           paramKey: 'pixelId',   githubRepo: 'stape-io/fb-tag'                          },
+  linkedin:  { owner: 'linkedin',  repository: 'linkedin-gtm-community-template', name: 'LinkedIn Insight Tag', paramKey: 'partnerId', githubRepo: 'linkedin/linkedin-gtm-community-template'  },
+  clarity:   { owner: 'microsoft', repository: 'clarity-gtm-template',            name: 'Microsoft Clarity',    paramKey: 'projectId', githubRepo: 'microsoft/clarity-gtm-template'            },
+  tiktok:    { owner: 'tiktok',    repository: 'gtm-template-pixel',              name: 'TikTok Pixel',         paramKey: 'pixelCode', githubRepo: 'tiktok/gtm-template-pixel'                 },
+  pinterest: { owner: 'pinterest', repository: 'ws-gtm-template',                 name: 'Pinterest Tag',        paramKey: 'tagId',     githubRepo: 'pinterest/ws-gtm-template'                 },
 };
+
+// Fetch templateData from GitHub raw .tpl file
+function fetchTemplateData(githubRepo) {
+  const url = `https://raw.githubusercontent.com/${githubRepo}/main/template.tpl`;
+  return new Promise((resolve, reject) => {
+    https.get(url, { headers: { 'User-Agent': 'gtm-ga4-mcp' } }, res => {
+      if (res.statusCode === 404) {
+        // try master branch
+        https.get(url.replace('/main/', '/master/'), { headers: { 'User-Agent': 'gtm-ga4-mcp' } }, res2 => {
+          let data = '';
+          res2.on('data', c => { data += c; });
+          res2.on('end', () => res2.statusCode === 200 ? resolve(data) : reject(new Error(`Template .tpl non trovato (${res2.statusCode})`)));
+        }).on('error', reject);
+        return;
+      }
+      let data = '';
+      res.on('data', c => { data += c; });
+      res.on('end', () => res.statusCode === 200 ? resolve(data) : reject(new Error(`Template .tpl non trovato (${res.statusCode})`)));
+    }).on('error', reject);
+  });
+}
 
 // ── Tag configuration map ─────────────────────────────────────────────────────
 // Maps detected tag name → how to build the GTM tag
@@ -169,13 +191,21 @@ async function installGalleryTemplate(gtm, wsPath, containerId, galleryRef) {
     return `cvt_${containerId}_${existing.templateId}`;
   }
 
-  // Try to install from gallery reference
+  // Fetch templateData from GitHub and install
+  let templateData;
+  try {
+    templateData = await fetchTemplateData(galleryRef.githubRepo);
+  } catch (e) {
+    throw new Error(`Impossibile scaricare template "${galleryRef.name}" da GitHub: ${e.message}`);
+  }
+
   try {
     const res = await apiWrite(() =>
       gtm.accounts.containers.workspaces.templates.create({
         parent: wsPath,
         requestBody: {
           name: galleryRef.name,
+          templateData,
           galleryReference: {
             host: 'tagmanager.google.com',
             owner: galleryRef.owner,

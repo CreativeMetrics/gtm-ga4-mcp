@@ -184,13 +184,24 @@ function extractIds(html, networkUrls) {
   const ids = {};
   const all = networkUrls.join('\n') + '\n' + html;
 
-  // GA4 measurement ID
-  const ga4 = html.match(/gtag\s*\(\s*['"]config['"]\s*,\s*['"]([G]-[A-Z0-9]+)['"]/i);
-  if (ga4) ids.ga4 = ga4[1];
+  // GA4 measurement ID — try HTML first, then network requests (covers GTM-loaded GA4)
+  const ga4Html = html.match(/gtag\s*\(\s*['"]config['"]\s*,\s*['"]([G]-[A-Za-z0-9]+)['"]/i);
+  if (ga4Html) {
+    ids.ga4 = ga4Html[1];
+  } else {
+    // GA4 loaded via GTM: ID appears in collect requests as tid=G-XXXXX
+    const ga4Net = networkUrls.join('\n').match(/[?&]tid=(G-[A-Za-z0-9]+)/i);
+    if (ga4Net) ids.ga4 = ga4Net[1];
+  }
 
-  // Google Ads conversion ID (number only, without AW-)
-  const aw = html.match(/AW-(\d{9,})/);
-  if (aw) ids.googleAdsId = aw[1];
+  // Google Ads conversion ID — HTML then network
+  const awHtml = html.match(/AW-(\d{9,})/);
+  if (awHtml) {
+    ids.googleAdsId = awHtml[1];
+  } else {
+    const awNet = networkUrls.join('\n').match(/[?&](?:tid|id)=(AW-\d{9,})/i);
+    if (awNet) ids.googleAdsId = awNet[1].replace('AW-', '');
+  }
 
   // Google Ads conversion label (from send_to: 'AW-xxx/label')
   const conv = html.match(/['"]send_to['"]\s*:\s*['"]AW-\d+\/([A-Za-z0-9_\-]+)['"]/);
