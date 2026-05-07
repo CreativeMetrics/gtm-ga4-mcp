@@ -92,34 +92,35 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
   ]);
   const srcBuiltIns = builtInRes.data.builtInVariable || [];
 
-  // 1c. Rileva quali template sono necessari
-  const neededUserTmplIds = new Set();
-  const neededGalleryTypes = new Set();
+  // 1c. Stessa logica dell'estensione: byTmplId indicizzato per templateId (numerico)
+  //     per template utente, e per tipo (cvt_XXXXX) per gallery
+  const tmplById = {};
+  srcTemplateList.forEach(t => { if (t.templateId) tmplById[t.templateId] = t; });
+
+  const byTmplId = {};
+  srcTemplateList.forEach(t => {
+    if (!t.templateId) return;
+    byTmplId[t.templateId] = { template: t };
+  });
   [...srcTags, ...srcVars].forEach(e => {
     const tid = templateIdFromType(e.type);
     if (!tid) return;
-    if (isGalleryTemplateId(tid)) neededGalleryTypes.add(tid);
-    else neededUserTmplIds.add(tid);
+    if (!byTmplId[tid]) byTmplId[tid] = { template: tmplById[tid] || null };
   });
 
-  // 1d. Fetch templateData completo per ogni template (la list API non la include)
-  const srcTemplatesFull = {};
-  for (const t of srcTemplateList) {
-    try {
-      const r = await auth.request({
-        url: `https://www.googleapis.com/tagmanager/v2/${srcWsBase}/templates/${t.templateId}`,
-        method: 'GET',
-      });
-      await sleep(READ_DELAY_MS);
-      srcTemplatesFull[t.templateId] = r.data;
-    } catch (_) {
-      srcTemplatesFull[t.templateId] = t;
-    }
-  }
+  const neededTmplIds = new Set(
+    [...srcTags, ...srcVars]
+      .map(e => templateIdFromType(e.type))
+      .filter(Boolean)
+  );
+  const tmplEntries = [...neededTmplIds]
+    .map(tid => [tid, byTmplId[tid]])
+    .filter(([, v]) => v);
 
-  const srcGalleryTemplates = Object.values(srcTemplatesFull).filter(t => t.galleryReference);
+  const userTmplEntries    = tmplEntries.filter(([tid]) => !isGalleryTemplateId(tid));
+  const galleryTypesNeeded = new Set(tmplEntries.filter(([tid]) => isGalleryTemplateId(tid)).map(([tid]) => tid));
 
-  log.push(`Rilevati: ${srcFolders.length} cartelle · ${srcBuiltIns.length} built-in · ${neededUserTmplIds.size} template utente · ${neededGalleryTypes.size} template gallery · ${srcVars.length} variabili · ${srcTrigs.length} trigger · ${srcTags.length} tag`);
+  log.push(`Rilevati: ${srcFolders.length} cartelle · ${srcBuiltIns.length} built-in · ${userTmplEntries.length} template utente · ${galleryTypesNeeded.size} template gallery · ${srcVars.length} variabili · ${srcTrigs.length} trigger · ${srcTags.length} tag`);
 
   // ════════════════════════════════════════════════════════════
   // FASE 2 — SCRITTURA (ordine: workspace → template → cartelle → built-in → variabili → trigger → tag)
@@ -137,23 +138,31 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
   const dstWsBase = `${dstBase}/workspaces/${dstWs.workspaceId}`;
   log.push(`Workspace "${dstWs.name}" creato (ID: ${dstWs.workspaceId})`);
 
-  // 2b. Installa template utente PRIMA di tutto il resto
+  // 2b + 2c. Installa tutti i template PRIMA di copiare variabili/trigger/tag
+  //          Logica portata 1:1 dall'estensione Chrome
   const typeMap = {};
   let tmplUserOk = 0;
   let tmplGalleryOk = 0;
 
-  if (neededUserTmplIds.size > 0) {
-    log.push(`Template utente (${neededUserTmplIds.size})…`);
-    for (const srcTid of neededUserTmplIds) {
-      const t = srcTemplatesFull[srcTid];
+  if (tmplEntries.length > 0) {
+    log.push(`Template (${tmplEntries.length}) — installazione…`);
+
+    // Ri-fetch della lista per avere templateData (stesso approccio dell'estensione)
+    const srcFull = await getAll(auth, `${srcWsBase}/templates`, 'template');
+    const srcFullById = {};
+    srcFull.forEach(t => { if (t.templateId) srcFullById[t.templateId] = t; });
+
+    // ── Template utente (cvt_<containerId>_<numericId>) ──────────────────
+    for (const [srcTid, { template }] of userTmplEntries) {
       const srcType = `cvt_${srcContId}_${srcTid}`;
-      const name = t?.name || `Template ${srcTid}`;
+      const sf = srcFullById[srcTid] || template;
+      const name = sf?.name || template?.name || `Template ${srcTid}`;
       let dstTid = null;
 
-      if (t?.templateData) {
+      if (sf?.templateData) {
         try {
-          const body = { name: t.name, templateData: t.templateData };
-          if (t.galleryReference) body.galleryReference = t.galleryReference;
+          const body = { name: sf.name, templateData: sf.templateData };
+          if (sf.galleryReference) body.galleryReference = sf.galleryReference;
           const resp = await apiWrite(() =>
             gtm.accounts.containers.workspaces.templates.create({
               parent: dstWsBase,
@@ -166,57 +175,56 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
         } catch (e) {
           warn.push(`  ✗ Template "${name}": ${e.message}`);
         }
+      } else {
+        warn.push(`  ⚠ Nessun templateData per "${name}"`);
       }
 
       if (!dstTid) {
-        try {
-          const existing = await getAll(auth, `${dstWsBase}/templates`, 'template');
-          const match = existing.find(x => x.name?.toLowerCase() === name.toLowerCase());
-          if (match?.templateId) {
-            dstTid = match.templateId;
-            log.push(`  ✓ "${name}" già presente (ID: ${dstTid})`);
-            tmplUserOk++;
-          }
-        } catch (_) {}
+        const existing = await getAll(auth, `${dstWsBase}/templates`, 'template').catch(() => []);
+        const match = existing.find(x => x.name?.toLowerCase() === name.toLowerCase());
+        if (match?.templateId) {
+          dstTid = match.templateId;
+          log.push(`  ✓ "${name}" già presente (ID: ${dstTid})`);
+          tmplUserOk++;
+        } else {
+          warn.push(`  ✗ "${name}" non installabile`);
+        }
       }
 
       if (dstTid) typeMap[srcType] = `cvt_${dstContId}_${dstTid}`;
-      else warn.push(`  ⚠ Template "${name}" non installato — i tag che lo usano potrebbero fallire`);
     }
-  }
 
-  // 2c. Installa template gallery PRIMA di copiare tag/variabili
-  const manualTemplates = []; // template che richiedono installazione manuale
-  if (neededGalleryTypes.size > 0) {
-    log.push(`Template gallery (${neededGalleryTypes.size})…`);
-    const existDst = await getAll(auth, `${dstWsBase}/templates`, 'template');
-    const existNames = new Set(existDst.map(t => (t.name || '').toLowerCase()));
+    // ── Template gallery (cvt_XXXXX — ID universale, no remapping) ───────
+    if (galleryTypesNeeded.size > 0) {
+      const srcGallery = srcFull.filter(t => t.galleryReference);
+      const existDst = await getAll(auth, `${dstWsBase}/templates`, 'template').catch(() => []);
+      const existNames = new Set(existDst.map(t => (t.name || '').toLowerCase()));
 
-    for (const srcTmpl of srcGalleryTemplates) {
-      const name = srcTmpl.name || '';
-      if (existNames.has(name.toLowerCase())) {
-        log.push(`  ✓ "${name}" già presente`);
-        tmplGalleryOk++;
-        continue;
-      }
-      if (!srcTmpl.templateData) {
-        manualTemplates.push(name);
-        warn.push(`  ⚠ "${name}": richiede installazione manuale (Google non espone templateData via API per questo template)`);
-        continue;
-      }
-      try {
-        const body = { name: srcTmpl.name, templateData: srcTmpl.templateData };
-        if (srcTmpl.galleryReference) body.galleryReference = srcTmpl.galleryReference;
-        await apiWrite(() =>
-          gtm.accounts.containers.workspaces.templates.create({
-            parent: dstWsBase,
-            requestBody: body,
-          })
-        );
-        log.push(`  ✓ "${name}" installato`);
-        tmplGalleryOk++;
-      } catch (e) {
-        warn.push(`  ⚠ Gallery template "${name}": ${e.message}`);
+      for (const srcTmpl of srcGallery) {
+        const name = srcTmpl.name || `Template ${srcTmpl.templateId}`;
+        if (existNames.has(name.toLowerCase())) {
+          log.push(`  ✓ "${name}" già presente`);
+          tmplGalleryOk++;
+          continue;
+        }
+        if (!srcTmpl.templateData) {
+          warn.push(`  ⚠ "${name}": nessun templateData`);
+          continue;
+        }
+        try {
+          const body = { name: srcTmpl.name, templateData: srcTmpl.templateData };
+          if (srcTmpl.galleryReference) body.galleryReference = srcTmpl.galleryReference;
+          await apiWrite(() =>
+            gtm.accounts.containers.workspaces.templates.create({
+              parent: dstWsBase,
+              requestBody: body,
+            })
+          );
+          log.push(`  ✓ "${name}" installato`);
+          tmplGalleryOk++;
+        } catch (e) {
+          warn.push(`  ⚠ "${name}": ${e.message}`);
+        }
       }
     }
   }
@@ -344,15 +352,6 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
     }
   }
 
-  const manualSteps = [];
-  if (manualTemplates.length > 0) {
-    manualSteps.push(
-      `⚠ ${manualTemplates.length} template richiedono installazione manuale in GTM:`,
-      ...manualTemplates.map(n => `  → Cerca "${n}" nella Gallery di GTM (Modelli > Cerca nella galleria) e installalo nel container destinazione`),
-      `  Dopo l'installazione manuale i tag che usano questi template funzioneranno correttamente.`
-    );
-  }
-
   return {
     workspace: { id: dstWs.workspaceId, name: dstWs.name },
     counts: {
@@ -363,7 +362,7 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
       tags: tagOk,
     },
     totals: {
-      templates: neededUserTmplIds.size + neededGalleryTypes.size,
+      templates: tmplEntries.length,
       folders: srcFolders.length,
       variables: srcVars.length,
       triggers: srcTrigs.length,
@@ -371,7 +370,6 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
     },
     log,
     warnings: warn,
-    manualSteps: manualSteps.length > 0 ? manualSteps : undefined,
     hasIssues: warn.length > 0,
   };
 }
