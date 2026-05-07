@@ -186,6 +186,7 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
   }
 
   // 2c. Installa template gallery PRIMA di copiare tag/variabili
+  const manualTemplates = []; // template che richiedono installazione manuale
   if (neededGalleryTypes.size > 0) {
     log.push(`Template gallery (${neededGalleryTypes.size})…`);
     const existDst = await getAll(auth, `${dstWsBase}/templates`, 'template');
@@ -199,7 +200,8 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
         continue;
       }
       if (!srcTmpl.templateData) {
-        warn.push(`  ⚠ Gallery template "${name}": templateData non disponibile (potrebbe richiedere accettazione manuale dei ToS in GTM)`);
+        manualTemplates.push(name);
+        warn.push(`  ⚠ "${name}": richiede installazione manuale (Google non espone templateData via API per questo template)`);
         continue;
       }
       try {
@@ -342,6 +344,15 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
     }
   }
 
+  const manualSteps = [];
+  if (manualTemplates.length > 0) {
+    manualSteps.push(
+      `⚠ ${manualTemplates.length} template richiedono installazione manuale in GTM:`,
+      ...manualTemplates.map(n => `  → Cerca "${n}" nella Gallery di GTM (Modelli > Cerca nella galleria) e installalo nel container destinazione`),
+      `  Dopo l'installazione manuale i tag che usano questi template funzioneranno correttamente.`
+    );
+  }
+
   return {
     workspace: { id: dstWs.workspaceId, name: dstWs.name },
     counts: {
@@ -360,6 +371,7 @@ async function duplicateContainer(auth, srcAccountId, srcContainerId, dstAccount
     },
     log,
     warnings: warn,
+    manualSteps: manualSteps.length > 0 ? manualSteps : undefined,
     hasIssues: warn.length > 0,
   };
 }
