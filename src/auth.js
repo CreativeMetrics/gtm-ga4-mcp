@@ -6,7 +6,7 @@ const CREDENTIALS_PATH = path.join(process.env.HOME, '.gtm-ga4-mcp', 'credential
 const TOKEN_PATH = path.join(process.env.HOME, '.gtm-ga4-mcp', 'token.json');
 
 const SCOPES = [
-  'https://www.googleapis.com/auth/tagmanager.readonly',
+  'https://www.googleapis.com/auth/tagmanager.manage.accounts',
   'https://www.googleapis.com/auth/tagmanager.edit.containers',
   'https://www.googleapis.com/auth/tagmanager.publish',
   'https://www.googleapis.com/auth/analytics.readonly',
