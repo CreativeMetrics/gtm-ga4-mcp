@@ -61,6 +61,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ['account_id', 'container_id', 'name'],
       },
     },
+    {
+      name: 'gtm_list_templates',
+      description: 'Elenca i template installati in un workspace GTM, incluso il loro tipo (cvt_...) e templateId.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          account_id: { type: 'string' },
+          container_id: { type: 'string' },
+          workspace_id: { type: 'string', description: 'Opzionale' },
+        },
+        required: ['account_id', 'container_id'],
+      },
+    },
     // Tags
     {
       name: 'gtm_list_tags',
@@ -369,6 +382,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
 
       // GTM
+      case 'gtm_list_templates':
+        result = await gtm.listTemplates(auth, args.account_id, args.container_id, args.workspace_id);
+        break;
       case 'gtm_list_accounts':
         result = await gtm.listAccounts(auth);
         break;

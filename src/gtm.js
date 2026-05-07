@@ -39,6 +39,15 @@ async function resolveWorkspaceId(auth, accountId, containerId, workspaceId) {
   return defaultWs.workspaceId;
 }
 
+async function listTemplates(auth, accountId, containerId, workspaceId) {
+  const gtm = getTagManager(auth);
+  const wsId = await resolveWorkspaceId(auth, accountId, containerId, workspaceId);
+  const res = await gtm.accounts.containers.workspaces.templates.list({
+    parent: `accounts/${accountId}/containers/${containerId}/workspaces/${wsId}`,
+  });
+  return res.data.template || [];
+}
+
 async function createWorkspace(auth, accountId, containerId, name, description) {
   const gtm = getTagManager(auth);
   const res = await gtm.accounts.containers.workspaces.create({
@@ -189,6 +198,7 @@ module.exports = {
   listContainers,
   listWorkspaces,
   createWorkspace,
+  listTemplates,
   listTags,
   createTag,
   updateTag,
