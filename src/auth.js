@@ -12,6 +12,7 @@ const SCOPES = [
   'https://www.googleapis.com/auth/tagmanager.publish',
   'https://www.googleapis.com/auth/analytics.readonly',
   'https://www.googleapis.com/auth/analytics.edit',
+  'https://www.googleapis.com/auth/webmasters.readonly',
 ];
 
 function getAuthClient() {

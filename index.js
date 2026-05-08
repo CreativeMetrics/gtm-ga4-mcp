@@ -10,6 +10,8 @@ const ga4 = require('./src/ga4.js');
 const { duplicateContainer } = require('./src/gtm-duplicate.js');
 const { scanUrl } = require('./src/tag-detector.js');
 const { createTagsFromUrl } = require('./src/gtm-from-scan.js');
+const { checkTagHealth, formatHealthReport } = require('./src/gtm-health.js');
+const gsc = require('./src/search-console.js');
 
 const server = new Server(
   { name: 'gtm-ga4-mcp', version: '1.0.0' },
@@ -483,6 +485,149 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         required: ['property_id'],
       },
     },
+    {
+      name: 'ga4_list_data_streams',
+      description: 'Elenca i data stream (web/app) di una proprietà GA4 con measurement ID.',
+      inputSchema: {
+        type: 'object',
+        properties: { property_id: { type: 'string' } },
+        required: ['property_id'],
+      },
+    },
+    {
+      name: 'ga4_list_audiences',
+      description: 'Elenca le audience configurate in una proprietà GA4.',
+      inputSchema: {
+        type: 'object',
+        properties: { property_id: { type: 'string' } },
+        required: ['property_id'],
+      },
+    },
+    {
+      name: 'ga4_list_key_events',
+      description: 'Elenca i key event (ex conversioni) di una proprietà GA4.',
+      inputSchema: {
+        type: 'object',
+        properties: { property_id: { type: 'string' } },
+        required: ['property_id'],
+      },
+    },
+    {
+      name: 'ga4_create_key_event',
+      description: 'Crea un key event in una proprietà GA4.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          property_id: { type: 'string' },
+          event_name: { type: 'string', description: 'Nome esatto dell\'evento GA4 da marcare come key event' },
+        },
+        required: ['property_id', 'event_name'],
+      },
+    },
+    {
+      name: 'ga4_compare_properties',
+      description: 'Confronta custom dimension, custom metric, key event e data stream tra due proprietà GA4. Mostra cosa è presente solo in una, solo nell\'altra, o in entrambe.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          property_id_a: { type: 'string' },
+          property_id_b: { type: 'string' },
+        },
+        required: ['property_id_a', 'property_id_b'],
+      },
+    },
+    {
+      name: 'ga4_looker_report_url',
+      description: 'Genera un URL per creare un report Looker Studio pre-connesso a una proprietà GA4. L\'utente apre il link e il report è pronto.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          property_id: { type: 'string' },
+          template: {
+            type: 'string',
+            enum: ['ga4_overview', 'ga4_acquisition', 'ga4_ecommerce', 'ga4_engagement'],
+            description: 'Template report (default: ga4_overview)',
+          },
+        },
+        required: ['property_id'],
+      },
+    },
+
+    // GTM Health Monitor
+    {
+      name: 'gtm_check_tag_health',
+      description: 'Verifica la salute dei tag GTM confrontando gli eventi GA4 degli ultimi 7 giorni con i 7 giorni precedenti. Segnala eventi fermi o calati oltre una soglia, e tag GTM in pausa.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          gtm_account_id: { type: 'string' },
+          gtm_container_id: { type: 'string' },
+          ga4_property_id: { type: 'string', description: 'ID numerico proprietà GA4 (senza "properties/")' },
+          drop_threshold: { type: 'number', description: 'Soglia calo per alert (0.0-1.0, default 0.8 = 80%)' },
+        },
+        required: ['gtm_account_id', 'gtm_container_id', 'ga4_property_id'],
+      },
+    },
+
+    // Search Console
+    {
+      name: 'gsc_list_sites',
+      description: 'Elenca tutti i siti verificati in Google Search Console.',
+      inputSchema: { type: 'object', properties: {} },
+    },
+    {
+      name: 'gsc_top_queries',
+      description: 'Mostra le query di ricerca con più click per un sito.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string', description: 'URL sito (es. https://www.esempio.it/)' },
+          days: { type: 'number', description: 'Periodo in giorni (default 28)' },
+          limit: { type: 'number', description: 'Numero di query (default 25)' },
+        },
+        required: ['site_url'],
+      },
+    },
+    {
+      name: 'gsc_top_pages',
+      description: 'Mostra le pagine con più click organici per un sito.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string' },
+          days: { type: 'number', description: 'Periodo in giorni (default 28)' },
+          limit: { type: 'number', description: 'Numero di pagine (default 25)' },
+        },
+        required: ['site_url'],
+      },
+    },
+    {
+      name: 'gsc_compare_periods',
+      description: 'Confronta click e posizioni di ricerca tra due periodi per identificare query in crescita o calo.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string' },
+          days: { type: 'number', description: 'Durata di ogni periodo in giorni (default 28)' },
+        },
+        required: ['site_url'],
+      },
+    },
+    {
+      name: 'gsc_search_analytics',
+      description: 'Esegui una query personalizzata su Search Console con dimensioni e filtri a scelta.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          site_url: { type: 'string' },
+          start_date: { type: 'string', description: 'Es. 2025-01-01' },
+          end_date: { type: 'string', description: 'Es. 2025-01-31' },
+          dimensions: { type: 'array', items: { type: 'string' }, description: 'Es. ["query","page","device","country"]' },
+          row_limit: { type: 'number', description: 'Numero di righe (default 25)' },
+        },
+        required: ['site_url', 'start_date', 'end_date'],
+      },
+    },
   ],
 }));
 
@@ -623,6 +768,53 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case 'ga4_list_conversion_events':
         result = await ga4.listConversionEvents(auth, args.property_id);
+        break;
+      case 'ga4_list_data_streams':
+        result = await ga4.listDataStreams(auth, args.property_id);
+        break;
+      case 'ga4_list_audiences':
+        result = await ga4.listAudiences(auth, args.property_id);
+        break;
+      case 'ga4_list_key_events':
+        result = await ga4.listKeyEvents(auth, args.property_id);
+        break;
+      case 'ga4_create_key_event':
+        result = await ga4.createKeyEvent(auth, args.property_id, args.event_name);
+        break;
+      case 'ga4_compare_properties':
+        result = await ga4.compareProperties(auth, args.property_id_a, args.property_id_b);
+        break;
+      case 'ga4_looker_report_url':
+        result = { url: ga4.generateLookerUrl(args.property_id, args.template || 'ga4_overview'), instructions: 'Apri questo URL nel browser per creare il report Looker Studio pre-connesso alla tua proprietà GA4.' };
+        break;
+
+      // GTM Health Monitor
+      case 'gtm_check_tag_health': {
+        const health = await checkTagHealth(auth, args.gtm_account_id, args.gtm_container_id, args.ga4_property_id, { dropThreshold: args.drop_threshold });
+        result = health;
+        break;
+      }
+
+      // Search Console
+      case 'gsc_list_sites':
+        result = await gsc.listSites(auth);
+        break;
+      case 'gsc_top_queries':
+        result = await gsc.getTopQueries(auth, args.site_url, args.days || 28, args.limit || 25);
+        break;
+      case 'gsc_top_pages':
+        result = await gsc.getTopPages(auth, args.site_url, args.days || 28, args.limit || 25);
+        break;
+      case 'gsc_compare_periods':
+        result = await gsc.compareSearchPeriods(auth, args.site_url, args.days || 28);
+        break;
+      case 'gsc_search_analytics':
+        result = await gsc.getSearchAnalytics(auth, args.site_url, {
+          startDate: args.start_date,
+          endDate: args.end_date,
+          dimensions: args.dimensions || ['query'],
+          rowLimit: args.row_limit || 25,
+        });
         break;
 
       // Tag Detection
