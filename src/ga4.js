@@ -10,8 +10,17 @@ function getAnalyticsData(auth) {
 
 async function listProperties(auth) {
   const admin = getAnalyticsAdmin(auth);
-  const res = await admin.properties.list({ filter: 'parent:accounts/-' });
-  return res.data.properties || [];
+  // accountSummaries returns all accounts + properties in one call, no account ID needed
+  const res = await admin.accountSummaries.list({ pageSize: 200 });
+  const summaries = res.data.accountSummaries || [];
+  return summaries.flatMap(account =>
+    (account.propertySummaries || []).map(p => ({
+      name: p.property,
+      displayName: p.displayName,
+      account: account.account,
+      accountDisplayName: account.displayName,
+    }))
+  );
 }
 
 async function listCustomDimensions(auth, propertyId) {
