@@ -1,3 +1,4 @@
 node_modules/
 .env
 *.log
+health-config.json
